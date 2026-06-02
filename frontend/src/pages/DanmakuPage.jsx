@@ -85,6 +85,7 @@ export default function DanmakuPage() {
 
   const connectWS = useCallback(() => {
     const token = localStorage.getItem('token');
+    if (!token) return;
     const wsUrl = `ws://${location.host}/ws/danmaku?token=${token}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
@@ -110,7 +111,7 @@ export default function DanmakuPage() {
       } catch {}
     };
     ws.onclose = (e) => {
-      if (e.code === 4001) return;
+      if (e.code === 4001 || e.reason === 'Unauthorized') return;
       const delay = Math.min(1000 * Math.pow(2, reconnectCount.current++), 30000);
       if (reconnectCount.current <= 5) {
         reconnectRef.current = setTimeout(connectWS, delay);
