@@ -82,6 +82,9 @@ router.delete('/:modId', requireAuth, requireAdmin, (req, res, next) => {
     const target = db.prepare('SELECT is_superadmin FROM mods WHERE id = ?').get(id);
     if (target?.is_superadmin) return res.status(403).json({ error: '超级管理员账户不能删除' });
     db.prepare('DELETE FROM invite_tokens WHERE created_by = ?').run(id);
+    db.prepare('UPDATE invite_tokens SET used_by = NULL WHERE used_by = ?').run(id);
+    db.prepare('DELETE FROM user_tags WHERE created_by = ?').run(id);
+    db.prepare('DELETE FROM ban_logs WHERE mod_id = ?').run(id);
     db.prepare('DELETE FROM mods WHERE id = ?').run(id);
     res.json({ ok: true });
   } catch (e) { next(e); }

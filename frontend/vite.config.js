@@ -7,7 +7,16 @@ export default defineConfig({
     port: 3000,
     proxy: {
       '/api': { target: 'http://localhost:3001', changeOrigin: true },
-      '/ws/danmaku': { target: 'ws://localhost:3001', ws: true }
+      '/ws/danmaku': {
+        target: 'ws://localhost:3001',
+        ws: true,
+        configure: (proxy) => {
+          proxy.on('error', () => {});
+          proxy.on('proxyReqWs', (proxyReq, req, socket) => {
+            socket.on('error', () => {});
+          });
+        }
+      }
     }
   }
 })

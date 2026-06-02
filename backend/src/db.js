@@ -11,6 +11,8 @@ fs.mkdirSync(DATA_DIR, { recursive: true });
 
 const DB_PATH = path.join(DATA_DIR, 'admin.db');
 export const db = new DatabaseSync(DB_PATH);
+// 关闭外键约束，由应用层手动管理级联删除
+db.exec('PRAGMA foreign_keys = OFF');
 
 export function initDb() {
   db.exec(`
