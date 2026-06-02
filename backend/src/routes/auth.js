@@ -59,7 +59,7 @@ router.post('/invite', requireAuth, requireAdmin, (req, res, next) => {
     db.prepare('INSERT INTO invite_tokens (token, created_by, expires_at) VALUES (?, ?, ?)')
       .run(token, req.mod.id, expiresAt);
 
-    const baseUrl = `${req.protocol}://${req.get('host')}`;
+    const baseUrl = (process.env.FRONTEND_URL || `${req.protocol}://${req.get('host')}`).replace(/\/$/, '');
     res.json({ token, link: `${baseUrl}/register?token=${token}`, expiresAt });
   } catch (e) { next(e); }
 });
