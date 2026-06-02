@@ -249,17 +249,19 @@ export default function DanmakuPage() {
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
           />
-          <select
-            className="dm-filter-select"
-            value={filterType}
-            onChange={e => setFilterType(e.target.value)}
-          >
-            <option value="all">全部</option>
-            <option value="danmaku">弹幕</option>
-            <option value="gift">礼物</option>
-            <option value="superchat">SC</option>
-            <option value="guard">上舰</option>
-          </select>
+          <div className="select-wrap">
+            <select
+              className="dm-filter-select"
+              value={filterType}
+              onChange={e => setFilterType(e.target.value)}
+            >
+              <option value="all">全部</option>
+              <option value="danmaku">弹幕</option>
+              <option value="gift">礼物</option>
+              <option value="superchat">SC</option>
+              <option value="guard">上舰</option>
+            </select>
+          </div>
           {(filterText || filterUid || filterType !== 'all') && (
             <button className="dm-filter-clear" onClick={() => { setFilterText(''); setFilterUid(null); setFilterType('all'); }}>
               ×

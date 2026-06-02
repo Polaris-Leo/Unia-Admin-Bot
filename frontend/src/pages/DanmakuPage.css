@@ -79,7 +79,7 @@
 }
 .dm-filter-input:focus { border-color: var(--primary); }
 
-.dm-filter-select { padding: 4px 28px 4px 8px; }
+.dm-filter-select { font-size: 12px; }
 
 .dm-filter-clear {
   width: 24px; height: 24px;

@@ -266,11 +266,13 @@ export default function ModsPage() {
                 onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))} required autoFocus />
               <input className="mods-field-input" type="password" placeholder="密码（至少 6 位）" value={createForm.password}
                 onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} required />
-              <select className="mods-field-select" value={createForm.role}
-                onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
-                <option value="mod">普通房管</option>
-                <option value="admin">系统管理员</option>
-              </select>
+              <div className="select-wrap">
+                <select className="mods-field-select" value={createForm.role}
+                  onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
+                  <option value="mod">普通房管</option>
+                  <option value="admin">系统管理员</option>
+                </select>
+              </div>
               {createError && <span className="mods-create-error">{createError}</span>}
               <button type="submit" className="mods-create-submit" disabled={creating}>
                 {creating ? '创建中...' : '确认创建'}
@@ -324,12 +326,14 @@ export default function ModsPage() {
         <div className="mods-content">
           <div className="mods-invite-create">
             <span className="mods-invite-label">生成邀请链接</span>
-            <select className="mods-invite-select" value={expiresHours}
-              onChange={e => setExpiresHours(Number(e.target.value))}>
-              <option value={24}>24 小时</option>
-              <option value={72}>72 小时</option>
-              <option value={168}>7 天</option>
-            </select>
+            <div className="select-wrap">
+              <select className="mods-invite-select" value={expiresHours}
+                onChange={e => setExpiresHours(Number(e.target.value))}>
+                <option value={24}>24 小时</option>
+                <option value={72}>72 小时</option>
+                <option value={168}>7 天</option>
+              </select>
+            </div>
             <button className="mods-invite-btn" onClick={handleCreateInvite}>生成</button>
           </div>
           {newInvite && (
