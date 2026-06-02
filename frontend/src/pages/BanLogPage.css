@@ -5,20 +5,17 @@
 
 .banlog-header {
   display: flex; align-items: center; gap: 12px;
-  padding: 12px 16px;
+  padding: 8px 16px;
   border-bottom: 1px solid var(--border);
   background: var(--bg-2);
   flex-shrink: 0;
 }
-.banlog-title { font-size: 15px; font-weight: 600; }
-.banlog-total { font-size: 12px; color: var(--text-3); }
+.banlog-title { font-size: 15px; font-weight: 600; flex-shrink: 0; }
+.banlog-total { font-size: 12px; color: var(--text-3); flex-shrink: 0; }
 
 .banlog-filters {
   display: flex; gap: 8px; align-items: center;
-  padding: 10px 16px;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-2);
-  flex-shrink: 0;
+  margin-left: auto;
 }
 
 .banlog-input {

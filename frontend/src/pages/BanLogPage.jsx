@@ -49,28 +49,27 @@ export default function BanLogPage() {
       <div className="banlog-header">
         <span className="banlog-title">禁言日志</span>
         <span className="banlog-total">共 {total} 条记录</span>
-      </div>
-
-      <div className="banlog-filters">
-        <input
-          className="banlog-input" placeholder="房管用户名"
-          value={filters.modUsername}
-          onChange={e => setFilters(f => ({ ...f, modUsername: e.target.value }))}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-        />
-        <input
-          className="banlog-input" placeholder="被禁用户UID"
-          value={filters.targetUid}
-          onChange={e => setFilters(f => ({ ...f, targetUid: e.target.value }))}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-        />
-        <input
-          className="banlog-input" placeholder="被禁用户名"
-          value={filters.targetName}
-          onChange={e => setFilters(f => ({ ...f, targetName: e.target.value }))}
-          onKeyDown={e => e.key === 'Enter' && handleSearch()}
-        />
-        <button className="banlog-search-btn" onClick={handleSearch}>搜索</button>
+        <div className="banlog-filters">
+          <input
+            className="banlog-input" placeholder="房管用户名"
+            value={filters.modUsername}
+            onChange={e => setFilters(f => ({ ...f, modUsername: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+          <input
+            className="banlog-input" placeholder="被禁用户UID"
+            value={filters.targetUid}
+            onChange={e => setFilters(f => ({ ...f, targetUid: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+          <input
+            className="banlog-input" placeholder="被禁用户名"
+            value={filters.targetName}
+            onChange={e => setFilters(f => ({ ...f, targetName: e.target.value }))}
+            onKeyDown={e => e.key === 'Enter' && handleSearch()}
+          />
+          <button className="banlog-search-btn" onClick={handleSearch}>搜索</button>
+        </div>
       </div>
 
       <div className="banlog-table-wrap">
