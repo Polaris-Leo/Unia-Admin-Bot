@@ -57,10 +57,10 @@
 .dm-status-dot {
   width: 8px; height: 8px;
   border-radius: 50%;
-  background: var(--text-3);
+  background: var(--danger);   /* 默认/未开播 → 红色 */
   flex-shrink: 0;
 }
-.dm-status-dot.live { background: var(--success); box-shadow: 0 0 6px var(--success); }
+.dm-status-dot.live   { background: var(--success); box-shadow: 0 0 6px var(--success); }
 .dm-status-dot.replay { background: var(--warning); }
 
 .dm-anchor { font-size: 13px; font-weight: 600; color: var(--text); }

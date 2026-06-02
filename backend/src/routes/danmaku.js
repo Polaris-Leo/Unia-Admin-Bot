@@ -12,6 +12,10 @@ let currentWS = null;
 let currentRoomId = null;
 let wss = null;
 
+// 缓存最新状态，供新连接的前端客户端立即同步
+let cachedRoomInfo = null;
+let cachedLiveStatus = null;
+
 function broadcast(data) {
   if (!wss) return;
   const msg = JSON.stringify(data);
@@ -25,8 +29,14 @@ function attachHandlers(liveWS) {
   liveWS.onGift       = (msg) => broadcast(msg);
   liveWS.onGuard      = (msg) => broadcast(msg);
   liveWS.onSuperChat  = (msg) => broadcast(msg);
-  liveWS.onLiveStatus = (msg) => broadcast({ type: 'live_status', ...msg });
-  liveWS.onRoomInfo   = (msg) => broadcast({ type: 'room_info', ...msg });
+  liveWS.onLiveStatus = (msg) => {
+    cachedLiveStatus = { type: 'live_status', ...msg };
+    broadcast(cachedLiveStatus);
+  };
+  liveWS.onRoomInfo = (msg) => {
+    cachedRoomInfo = { type: 'room_info', ...msg };
+    broadcast(cachedRoomInfo);
+  };
   liveWS.onWatched    = (msg) => broadcast(msg);
   liveWS.onLike       = (msg) => broadcast(msg);
   liveWS.onRankCount  = (msg) => broadcast(msg);
@@ -38,15 +48,31 @@ export async function connectRoom(roomId) {
     currentWS._intentionalDisconnect = true;
     currentWS.disconnect?.();
   }
+  cachedRoomInfo = null;
+  cachedLiveStatus = null;
+
   const cookies = await loadCookies();
   currentWS = new BilibiliLiveWS(roomId, cookies);
   currentRoomId = roomId;
   attachHandlers(currentWS);
   await currentWS.connect();
   console.log(`✅ 已连接直播间 ${roomId}`);
+
+  // 连接成功后主动拉取直播间信息和状态
+  setTimeout(async () => {
+    try {
+      const [roomInfo, liveStatus] = await Promise.all([
+        currentWS.getRoomInfo(),
+        currentWS.getLiveStatus()
+      ]);
+      if (roomInfo && currentWS.onRoomInfo) currentWS.onRoomInfo(roomInfo);
+      if (liveStatus && currentWS.onLiveStatus) currentWS.onLiveStatus(liveStatus);
+    } catch (e) {
+      console.error('[danmaku] 拉取房间信息失败:', e.message);
+    }
+  }, 1500);
 }
 
-// 手动触发连接（房管重连等场景）
 router.post('/start', requireAuth, async (req, res, next) => {
   try {
     const roomId = req.body.roomId || process.env.ROOM_ID;
@@ -63,6 +89,8 @@ router.post('/stop', requireAuth, (req, res) => {
     currentWS = null;
     currentRoomId = null;
   }
+  cachedRoomInfo = null;
+  cachedLiveStatus = null;
   res.json({ ok: true });
 });
 
@@ -86,6 +114,10 @@ export function createDanmakuWSS(server) {
       return;
     }
     ws.on('error', () => {});
+
+    // 新客户端接入时推送缓存的最新状态
+    if (cachedLiveStatus) ws.send(JSON.stringify(cachedLiveStatus));
+    if (cachedRoomInfo)   ws.send(JSON.stringify(cachedRoomInfo));
   });
 }
 
