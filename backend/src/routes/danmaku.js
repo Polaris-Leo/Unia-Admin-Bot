@@ -67,6 +67,13 @@ export async function connectRoom(roomId) {
       ]);
       if (roomInfo && currentWS.onRoomInfo) currentWS.onRoomInfo(roomInfo);
       if (liveStatus && currentWS.onLiveStatus) currentWS.onLiveStatus(liveStatus);
+
+      // 非直播状态（轮播/未开播）currentSessionId 为 null，无法存储弹幕
+      // 用当前时间戳创建兜底 session，确保消息能落盘
+      if (!currentWS.currentSessionId) {
+        currentWS.currentSessionId = Math.floor(Date.now() / 1000);
+        console.log(`📝 非直播状态，创建兜底 session: ${currentWS.currentSessionId}`);
+      }
     } catch (e) {
       console.error('[danmaku] 拉取房间信息失败:', e.message);
     }
