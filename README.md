@@ -136,7 +136,24 @@ console.log('密码已重置');
 
 ### 前提
 
-- 安装 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)
+- 安装 [Docker](https://docs.docker.com/get-docker/)
+- 安装 Docker Compose（见下方说明）
+
+**检查 Compose 是否可用：**
+
+```bash
+docker compose version   # 新版 Docker（推荐）
+docker-compose version   # 旧版独立工具
+```
+
+如果两条命令都不可用，安装 compose 插件：
+
+```bash
+# Debian / Ubuntu
+apt-get update && apt-get install -y docker-compose-plugin
+```
+
+> 下文统一使用 `docker compose`（空格），旧版系统替换为 `docker-compose`（连字符）即可。
 
 ### 步骤
 
