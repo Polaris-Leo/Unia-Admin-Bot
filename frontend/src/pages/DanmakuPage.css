@@ -17,17 +17,15 @@
 
 .dm-room-input { display: flex; align-items: center; gap: 8px; }
 
-.dm-input {
+.dm-room-label { font-size: 11px; color: var(--text-3); }
+.dm-room-id {
+  font-size: 13px; font-weight: 600; color: var(--text);
   background: var(--bg-3);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 5px 10px;
-  color: var(--text);
-  width: 140px;
-  outline: none;
+  padding: 4px 10px;
+  min-width: 80px;
 }
-.dm-input:focus { border-color: var(--primary); }
-.dm-input:disabled { opacity: 0.5; }
 
 .dm-btn {
   padding: 5px 14px;
@@ -38,6 +36,7 @@
 }
 .dm-btn-connect { background: var(--primary); color: #fff; }
 .dm-btn-disconnect { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
+.dm-btn-reconnect { background: var(--bg-3); color: var(--text-2); border: 1px solid var(--border); }
 .dm-btn:hover { opacity: 0.8; }
 
 .dm-status-dot {

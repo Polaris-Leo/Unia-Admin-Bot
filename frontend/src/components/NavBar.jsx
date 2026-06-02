@@ -2,19 +2,22 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { getMe } from '../services/api';
 import api from '../services/api';
+import BilibiliLoginModal from './BilibiliLoginModal';
 import './NavBar.css';
 
 export default function NavBar() {
   const navigate = useNavigate();
   const [me, setMe] = useState(null);
   const [cookieStatus, setCookieStatus] = useState(null);
+  const [showLoginModal, setShowLoginModal] = useState(false);
+
+  const fetchCookieStatus = () =>
+    api.get('/cookie-status').then(r => setCookieStatus(r.data)).catch(() => {});
 
   useEffect(() => {
     getMe().then(r => setMe(r.data)).catch(() => {});
-    const fetchStatus = () =>
-      api.get('/cookie-status').then(r => setCookieStatus(r.data)).catch(() => {});
-    fetchStatus();
-    const timer = setInterval(fetchStatus, 30000);
+    fetchCookieStatus();
+    const timer = setInterval(fetchCookieStatus, 30000);
     return () => clearInterval(timer);
   }, []);
 
@@ -33,24 +36,37 @@ export default function NavBar() {
           <NavLink to="/mods" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>房管管理</NavLink>
         )}
       </div>
-      {cookieStatus && (
-        <div
-          className={`navbar-cookie-status ${cookieStatus.connected ? 'connected' : cookieStatus.configured ? 'error' : 'local'}`}
-          title={
-            cookieStatus.connected
-              ? `Cookie 服务已连接 (UID: ${cookieStatus.uid || '?'})`
-              : cookieStatus.configured
-                ? `Cookie 服务无法连接 (${cookieStatus.url})`
-                : '使用本地 cookies.json'
-          }
-        >
-          <span className="navbar-cookie-dot" />
-          <span className="navbar-cookie-label">
-            {cookieStatus.connected
-              ? `Cookie UID:${cookieStatus.uid || '?'}`
-              : cookieStatus.configured ? 'Cookie 离线' : 'Cookie 本地'}
-          </span>
-        </div>
+      {cookieStatus && (() => {
+        const src = cookieStatus.activeSource;
+        const cls = src === 'remote' ? 'connected' : src === 'local' ? 'local' : 'error';
+        const label = src === 'remote'
+          ? `Cookie UID:${cookieStatus.remote?.uid || '?'}`
+          : src === 'local'
+            ? `Cookie UID:${cookieStatus.local?.uid || '本地'}`
+            : 'Cookie 未登录';
+        const tip = src === 'remote'
+          ? `BiliCookie 服务 (UID: ${cookieStatus.remote?.uid})`
+          : src === 'local'
+            ? `本地扫码登录 (UID: ${cookieStatus.local?.uid || '?'})`
+            : '未登录，点击扫码';
+        return (
+          <div
+            className={`navbar-cookie-status ${cls}`}
+            title={tip}
+            onClick={() => setShowLoginModal(true)}
+          >
+            <span className="navbar-cookie-dot" />
+            <span className="navbar-cookie-label">{label}</span>
+          </div>
+        );
+      })()}
+
+      {showLoginModal && (
+        <BilibiliLoginModal
+          cookieStatus={cookieStatus}
+          onClose={() => setShowLoginModal(false)}
+          onLoginSuccess={() => { fetchCookieStatus(); setShowLoginModal(false); }}
+        />
       )}
       <div className="navbar-user">
         {me && <span className="nav-username">{me.username}</span>}

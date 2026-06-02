@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { startDanmaku, stopDanmaku } from '../services/api';
+import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
 import HistoryDrawer from '../components/HistoryDrawer';
 import './DanmakuPage.css';
@@ -26,6 +27,7 @@ function formatDuration(secs) {
 export default function DanmakuPage() {
   const [roomId, setRoomId] = useState('');
   const [connected, setConnected] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [liveStatus, setLiveStatus] = useState(0);
   const [liveStartTime, setLiveStartTime] = useState(0);
   const [liveDuration, setLiveDuration] = useState('00:00:00');
@@ -118,6 +120,11 @@ export default function DanmakuPage() {
   }, [addMessage]);
 
   useEffect(() => {
+    // 读取后端配置的房间号和连接状态
+    api.get('/danmaku/rooms').then(r => {
+      if (r.data.configured) setRoomId(r.data.configured);
+      setConnected(r.data.connected);
+    }).catch(() => {});
     connectWS();
     return () => {
       clearTimeout(reconnectRef.current);
@@ -147,23 +154,19 @@ export default function DanmakuPage() {
     setUnreadCount(0);
   };
 
-  const handleConnect = async () => {
-    if (!roomId.trim()) return;
+  const handleReconnect = async () => {
+    setReconnecting(true);
     try {
-      await startDanmaku(roomId.trim());
+      await startDanmaku();
       setConnected(true);
       setDanmakuList([]);
       setScList([]);
       setGiftList([]);
     } catch (e) {
       alert(e.response?.data?.error || '连接失败');
+    } finally {
+      setReconnecting(false);
     }
-  };
-
-  const handleDisconnect = async () => {
-    await stopDanmaku();
-    setConnected(false);
-    setLiveStatus(0);
   };
 
   const handleUserClick = (e, user, msg) => {
@@ -218,20 +221,18 @@ export default function DanmakuPage() {
       {/* Top bar */}
       <div className="dm-topbar">
         <div className="dm-room-input">
-          <input
-            className="dm-input"
-            placeholder="直播间房间号"
-            value={roomId}
-            onChange={e => setRoomId(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && !connected && handleConnect()}
-            disabled={connected}
-          />
-          {!connected
-            ? <button className="dm-btn dm-btn-connect" onClick={handleConnect}>连接</button>
-            : <button className="dm-btn dm-btn-disconnect" onClick={handleDisconnect}>断开</button>
-          }
+          <span className="dm-room-label">房间号</span>
+          <span className="dm-room-id">{roomId || '未配置'}</span>
           <span className={`dm-status-dot ${liveStatus === 1 ? 'live' : liveStatus === 2 ? 'replay' : ''}`} />
           {liveStatus === 1 && <span className="dm-duration">{liveDuration}</span>}
+          <button
+            className="dm-btn dm-btn-reconnect"
+            onClick={handleReconnect}
+            disabled={reconnecting}
+            title="重新连接直播间"
+          >
+            {reconnecting ? '连接中...' : '重连'}
+          </button>
         </div>
 
         <div className="dm-stats">

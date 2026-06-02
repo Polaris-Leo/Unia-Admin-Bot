@@ -32,8 +32,8 @@ export const getMe = () => api.get('/auth/me');
 export const createInvite = (expiresHours) =>
   api.post('/auth/invite', { expiresHours });
 
-export const startDanmaku = (roomId) =>
-  api.post('/danmaku/start', { roomId });
+export const startDanmaku = () =>
+  api.post('/danmaku/start', {});
 
 export const stopDanmaku = () =>
   api.post('/danmaku/stop');
@@ -76,3 +76,18 @@ export const deleteMod = (modId) =>
 
 export const getInvites = () =>
   api.get('/mods/invites');
+
+export const getCookieStatus = () =>
+  api.get('/cookie-status');
+
+export const getBilibiliQRCode = () =>
+  api.get('/bilibili/qrcode');
+
+export const pollBilibiliQRCode = (qrcode_key) =>
+  api.get('/bilibili/qrcode/poll', { params: { qrcode_key } });
+
+export const getBilibiliAuthStatus = () =>
+  api.get('/bilibili/auth-status');
+
+export const bilibiliLogout = () =>
+  api.post('/bilibili/logout');

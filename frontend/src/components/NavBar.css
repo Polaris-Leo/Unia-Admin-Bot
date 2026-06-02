@@ -36,6 +36,7 @@
 .nav-link.active { background: var(--primary-dim); color: var(--primary); }
 
 .navbar-cookie-status {
+  cursor: pointer;
   display: flex;
   align-items: center;
   gap: 5px;
