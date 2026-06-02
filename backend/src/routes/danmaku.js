@@ -115,9 +115,12 @@ export function createDanmakuWSS(server) {
     }
     ws.on('error', () => {});
 
-    // 新客户端接入时推送缓存的最新状态
-    if (cachedLiveStatus) ws.send(JSON.stringify(cachedLiveStatus));
-    if (cachedRoomInfo)   ws.send(JSON.stringify(cachedRoomInfo));
+    // 延一个事件循环，等 Vite 代理管道完全建立后再推送缓存状态
+    setImmediate(() => {
+      if (ws.readyState !== ws.OPEN) return;
+      if (cachedLiveStatus) ws.send(JSON.stringify(cachedLiveStatus));
+      if (cachedRoomInfo)   ws.send(JSON.stringify(cachedRoomInfo));
+    });
   });
 }
 

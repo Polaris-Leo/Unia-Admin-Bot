@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMods, deleteMod, getInvites, createInvite } from '../services/api';
+import { getMods, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
 import './ModsPage.css';
 
 function formatTs(ms) {
@@ -26,6 +26,11 @@ export default function ModsPage() {
     const res = await createInvite(expiresHours);
     setNewInvite(res.data);
     setInvites(prev => [res.data, ...prev]);
+  };
+
+  const handleDeleteInvite = async (id) => {
+    await deleteInvite(id);
+    setInvites(prev => prev.filter(i => i.id !== id));
   };
 
   const handleDisable = async (modId, username) => {
@@ -130,6 +135,7 @@ export default function ModsPage() {
                 <th>有效期至</th>
                 <th>使用人</th>
                 <th>状态</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
@@ -149,6 +155,11 @@ export default function ModsPage() {
                           ? <span className="mods-invite-expired">已过期</span>
                           : <span className="mods-invite-valid">有效</span>
                       }
+                    </td>
+                    <td>
+                      <button className="mods-disable-btn" onClick={() => handleDeleteInvite(inv.id)}>
+                        删除
+                      </button>
                     </td>
                   </tr>
                 );

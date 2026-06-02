@@ -26,6 +26,13 @@ router.delete('/:modId', requireAuth, requireAdmin, (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+router.delete('/invites/:id', requireAuth, requireAdmin, (req, res, next) => {
+  try {
+    db.prepare('DELETE FROM invite_tokens WHERE id = ?').run(Number(req.params.id));
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
 router.get('/invites', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const rows = db.prepare(`

@@ -77,6 +77,9 @@ export const deleteMod = (modId) =>
 export const getInvites = () =>
   api.get('/mods/invites');
 
+export const deleteInvite = (id) =>
+  api.delete(`/mods/invites/${id}`);
+
 export const getCookieStatus = () =>
   api.get('/cookie-status');
 
