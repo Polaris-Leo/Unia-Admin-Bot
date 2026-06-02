@@ -1,0 +1,9 @@
+node_modules/
+backend/node_modules/
+frontend/node_modules/
+backend/data/admin.db
+backend/data/cookies.json
+backend/.env
+dist/
+frontend/dist/
+*.log

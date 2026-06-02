@@ -1,0 +1,43 @@
+import 'dotenv/config';
+import express from 'express';
+import { createServer } from 'http';
+import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { initDb } from './db.js';
+import authRouter from './routes/auth.js';
+import danmakuRouter, { createDanmakuWSS } from './routes/danmaku.js';
+import banRouter from './routes/ban.js';
+import historyRouter from './routes/history.js';
+import tagsRouter from './routes/tags.js';
+import modsRouter from './routes/mods.js';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const PORT = process.env.PORT || 3001;
+
+initDb();
+
+const app = express();
+const server = createServer(app);
+
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+app.use('/api/auth', authRouter);
+app.use('/api/danmaku', danmakuRouter);
+app.use('/api/ban', banRouter);
+app.use('/api/history', historyRouter);
+app.use('/api/tags', tagsRouter);
+app.use('/api/mods', modsRouter);
+
+app.use((err, req, res, next) => {
+  console.error('[Error]', err.message);
+  res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });
+});
+
+createDanmakuWSS(server);
+
+server.listen(PORT, () => {
+  console.log(`✅ Unia-Admin-Bot backend running on port ${PORT}`);
+});
