@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { generateQRCode, pollQRCode, fetchBuvid } from '../services/bilibiliAuth.js';
-import { saveCookies, loadCookies, clearCookies } from '../utils/cookieStorage.js';
+import { saveCookies, loadLocalCookies, clearCookies } from '../utils/cookieStorage.js';
 import { requireAuth } from '../middleware/auth.js';
 
 const router = Router();
@@ -40,10 +40,10 @@ router.get('/qrcode/poll', requireAuth, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// 获取当前 B站 Cookie 状态
-router.get('/auth-status', requireAuth, async (req, res, next) => {
+// 获取当前本地扫码 Cookie 状态（只检查本地文件）
+router.get('/auth-status', requireAuth, (req, res, next) => {
   try {
-    const cookies = await loadCookies();
+    const cookies = loadLocalCookies();
     const hasAuth = !!(cookies?.SESSDATA && cookies?.bili_jct);
     res.json({
       authenticated: hasAuth,

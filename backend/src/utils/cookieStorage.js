@@ -93,6 +93,14 @@ export function saveCookies(cookies) {
 }
 
 /**
+ * 仅从本地文件加载 Cookie（不走 BiliCookie 服务，用于检测本地扫码状态）
+ * @returns {Object|null}
+ */
+export function loadLocalCookies() {
+  return loadCookiesFromFile();
+}
+
+/**
  * 从文件加载Cookie（本地回退逻辑）
  * @returns {Object|null}
  */

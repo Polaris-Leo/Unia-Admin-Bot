@@ -13,7 +13,7 @@ import historyRouter from './routes/history.js';
 import tagsRouter from './routes/tags.js';
 import modsRouter from './routes/mods.js';
 import bilibiliRouter from './routes/bilibili.js';
-import { loadCookies } from './utils/cookieStorage.js';
+import { loadCookies, loadLocalCookies } from './utils/cookieStorage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -45,8 +45,8 @@ app.get('/api/cookie-status', async (req, res) => {
     } catch {}
   }
 
-  // 检查本地 cookies.json
-  const localCookies = await loadCookies().catch(() => null);
+  // 检查本地 cookies.json（只读文件，不走 BiliCookie 服务）
+  const localCookies = loadLocalCookies();
   const localAuth = !!(localCookies?.SESSDATA && localCookies?.bili_jct);
   const localUid = localCookies?.DedeUserID || null;
 
@@ -55,7 +55,13 @@ app.get('/api/cookie-status', async (req, res) => {
 
   res.json({
     activeSource,
-    remote: { configured: !!url, url: url || null, connected: remote.connected, uid: remote.uid },
+    remote: {
+      configured: !!url,
+      url: url || null,
+      connected: remote.connected,
+      uid: remote.uid,
+      configuredUid: remote.configuredUid   // 修复：之前漏掉了这个字段
+    },
     local: { authenticated: localAuth, uid: localUid }
   });
 });
