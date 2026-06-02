@@ -65,7 +65,7 @@ export default function BanLogPage() {
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <input
-          className="banlog-input" placeholder="被禁用户用户名"
+          className="banlog-input" placeholder="被禁用户名"
           value={filters.targetName}
           onChange={e => setFilters(f => ({ ...f, targetName: e.target.value }))}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
