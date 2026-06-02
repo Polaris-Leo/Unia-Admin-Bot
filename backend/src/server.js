@@ -74,6 +74,13 @@ app.use('/api/tags', tagsRouter);
 app.use('/api/mods', modsRouter);
 app.use('/api/bilibili', bilibiliRouter);
 
+// 托管前端构建产物（生产模式）
+const frontendDist = path.join(__dirname, '../../frontend/dist');
+app.use(express.static(frontendDist));
+app.get('*', (req, res) => {
+  res.sendFile(path.join(frontendDist, 'index.html'));
+});
+
 app.use((err, req, res, next) => {
   console.error('[Error]', err.message);
   res.status(err.status || 500).json({ error: err.message || 'Internal Server Error' });

@@ -56,15 +56,26 @@ BILI_COOKIE_UID=你的UID
 
 ### 3. 启动
 
-```bash
-# 后端（首次启动会打印 admin 初始密码，请记录）
-cd backend && npm run dev
+**生产模式（单端口，推荐）**
 
-# 前端（新终端）
-cd frontend && npm run dev
+```bash
+# 构建前端
+npm run build
+
+# 启动后端（同时托管前端）
+npm run start
 ```
 
-访问 [http://localhost:3000](http://localhost:3000)，使用 `admin` 账户登录。
+访问 [http://localhost:3001](http://localhost:3001)，使用 `admin` 账户登录。
+
+**开发模式（双端口，支持热更新）**
+
+```bash
+# 同时启动前后端
+npm run dev
+```
+
+访问 [http://localhost:3000](http://localhost:3000)（Vite 开发服务器，带热更新）。
 
 ## 配置说明
 
@@ -76,6 +87,7 @@ cd frontend && npm run dev
 | `ADMIN_INIT_PASSWORD` | 否 | 首次启动 admin 初始密码，留空则随机生成并打印到终端 |
 | `ROOM_ID` | 是 | 直播间房间号，启动后自动连接 |
 | `COOKIE_MANAGER_URL` | 否 | Unia-BiliCookie 服务地址，留空则仅使用本地扫码 Cookie |
+| `FRONTEND_URL` | 否 | 邀请链接中的前端地址；生产模式用 `http://localhost:3001`，开发模式用 `http://localhost:3000` |
 | `BILI_COOKIE_UID` | 推荐 | 指定 BiliCookie 账号 UID；未填时自动取任意可用账号（禁言可能无权限）|
 
 ## B 站账号登录
