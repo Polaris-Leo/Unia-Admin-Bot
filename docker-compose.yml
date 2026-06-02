@@ -1,0 +1,12 @@
+services:
+  app:
+    build: .
+    image: unia-admin-bot:latest
+    container_name: unia-admin-bot
+    ports:
+      - "3001:3001"
+    volumes:
+      - ./data:/app/backend/data
+    env_file:
+      - backend/.env
+    restart: unless-stopped

@@ -154,6 +154,7 @@ cp backend/.env.example backend/.env
 ```
 
 编辑 `backend/.env`，填写 `JWT_SECRET`、`ROOM_ID`、`BILI_COOKIE_UID` 等必填项。
+**注意**：`FRONTEND_URL` 用于生成邀请链接，部署到服务器时需改为实际访问地址（如 `http://192.168.1.100:3001` 或域名）。
 
 **3. 启动**
 
