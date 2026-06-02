@@ -39,15 +39,68 @@
 }
 .mods-role-badge.admin { background: var(--primary-dim); color: var(--primary); }
 
-.mods-status-active { color: var(--success); font-size: 11px; }
-.mods-status-disabled { color: var(--text-3); font-size: 11px; }
 
-.mods-disable-btn {
-  padding: 2px 10px; border-radius: var(--radius-sm);
+.mods-toolbar {
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-2);
+}
+
+.mods-create-btn {
+  padding: 5px 14px; border-radius: var(--radius-sm);
+  background: var(--primary); color: #fff; font-size: 12px; font-weight: 600;
+}
+.mods-create-btn:hover { opacity: 0.85; }
+
+.mods-create-form {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  padding: 10px 16px;
+  background: var(--bg-3);
+  border-bottom: 1px solid var(--border);
+}
+
+.mods-field-input {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 5px 10px;
+  color: var(--text); font-size: 12px; outline: none;
+  width: 140px;
+}
+.mods-field-input:focus { border-color: var(--primary); }
+
+.mods-field-select {
+  background: var(--bg-2); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 5px 8px;
+  color: var(--text); font-size: 12px; outline: none;
+}
+
+.mods-create-error { font-size: 11px; color: var(--danger); }
+
+.mods-create-submit {
+  padding: 5px 14px; border-radius: var(--radius-sm);
+  background: var(--primary); color: #fff; font-size: 12px; font-weight: 600;
+}
+.mods-create-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.mods-actions { display: flex; gap: 6px; align-items: center; }
+
+.mods-role-btn {
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  background: rgba(251,114,153,0.1); color: var(--primary);
+  font-size: 11px; border: 1px solid rgba(251,114,153,0.3);
+}
+.mods-role-btn:hover { background: var(--primary); color: #fff; }
+.mods-role-btn-demote {
+  background: rgba(250,173,20,0.1); color: var(--warning);
+  border-color: rgba(250,173,20,0.3);
+}
+.mods-role-btn-demote:hover { background: var(--warning); color: #fff; }
+
+.mods-delete-btn {
+  padding: 2px 8px; border-radius: var(--radius-sm);
   background: rgba(255,77,79,0.1); color: var(--danger);
   font-size: 11px; border: 1px solid rgba(255,77,79,0.25);
 }
-.mods-disable-btn:hover { background: var(--danger); color: #fff; }
+.mods-delete-btn:hover { background: var(--danger); color: #fff; }
 
 .mods-invite-create {
   display: flex; align-items: center; gap: 10px;

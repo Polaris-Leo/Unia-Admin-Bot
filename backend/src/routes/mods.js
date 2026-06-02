@@ -1,9 +1,11 @@
 import { Router } from 'express';
+import bcrypt from 'bcrypt';
 import { db } from '../db.js';
 import { requireAuth, requireAdmin } from '../middleware/auth.js';
 
 const router = Router();
 
+// 用户列表
 router.get('/', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const rows = db.prepare(`
@@ -17,15 +19,50 @@ router.get('/', requireAuth, requireAdmin, (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-router.delete('/:modId', requireAuth, requireAdmin, (req, res, next) => {
+// 直接创建用户（管理员手动添加，无需邀请码）
+router.post('/', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const { username, password, role = 'mod' } = req.body;
+    if (!username || !password) return res.status(400).json({ error: '请填写用户名和密码' });
+    if (password.length < 6) return res.status(400).json({ error: '密码至少 6 位' });
+    if (!['admin', 'mod'].includes(role)) return res.status(400).json({ error: '角色无效' });
+
+    const exists = db.prepare('SELECT id FROM mods WHERE username = ?').get(username);
+    if (exists) return res.status(400).json({ error: '用户名已存在' });
+
+    const hash = await bcrypt.hash(password, 12);
+    const result = db.prepare(
+      `INSERT INTO mods (username, password_hash, role, created_at) VALUES (?, ?, ?, ?)`
+    ).run(username, hash, role, Date.now());
+
+    res.json({ id: result.lastInsertRowid, username, role });
+  } catch (e) { next(e); }
+});
+
+// 修改用户角色
+router.patch('/:modId/role', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const id = Number(req.params.modId);
-    if (id === req.mod.id) return res.status(400).json({ error: '不能禁用自己' });
-    db.prepare('UPDATE mods SET disabled_at = ? WHERE id = ?').run(Date.now(), id);
+    const { role } = req.body;
+    if (!['admin', 'mod'].includes(role)) return res.status(400).json({ error: '角色无效' });
+    if (id === req.mod.id) return res.status(400).json({ error: '不能修改自己的角色' });
+    db.prepare('UPDATE mods SET role = ? WHERE id = ?').run(role, id);
     res.json({ ok: true });
   } catch (e) { next(e); }
 });
 
+// 删除用户（硬删除，同时清理关联邀请码）
+router.delete('/:modId', requireAuth, requireAdmin, (req, res, next) => {
+  try {
+    const id = Number(req.params.modId);
+    if (id === req.mod.id) return res.status(400).json({ error: '不能删除自己' });
+    db.prepare('DELETE FROM invite_tokens WHERE created_by = ?').run(id);
+    db.prepare('DELETE FROM mods WHERE id = ?').run(id);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// 邀请码删除
 router.delete('/invites/:id', requireAuth, requireAdmin, (req, res, next) => {
   try {
     db.prepare('DELETE FROM invite_tokens WHERE id = ?').run(Number(req.params.id));
@@ -33,6 +70,7 @@ router.delete('/invites/:id', requireAuth, requireAdmin, (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 邀请码列表
 router.get('/invites', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const rows = db.prepare(`

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMods, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
+import { getMods, createMod, updateModRole, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
 import './ModsPage.css';
 
 function formatTs(ms) {
@@ -9,10 +9,18 @@ function formatTs(ms) {
 export default function ModsPage() {
   const [mods, setMods] = useState([]);
   const [invites, setInvites] = useState([]);
+  const [tab, setTab] = useState('users');
+
+  // 新建用户表单
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createForm, setCreateForm] = useState({ username: '', password: '', role: 'mod' });
+  const [createError, setCreateError] = useState('');
+  const [creating, setCreating] = useState(false);
+
+  // 邀请码
   const [expiresHours, setExpiresHours] = useState(24);
   const [newInvite, setNewInvite] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
-  const [tab, setTab] = useState('mods');
 
   const load = async () => {
     const [m, i] = await Promise.all([getMods(), getInvites()]);
@@ -21,6 +29,41 @@ export default function ModsPage() {
   };
 
   useEffect(() => { load(); }, []);
+
+  const handleCreate = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+    setCreating(true);
+    try {
+      const res = await createMod(createForm);
+      setMods(prev => [{ ...res.data, created_at: Date.now(), invited_by_name: null }, ...prev]);
+      setCreateForm({ username: '', password: '', role: 'mod' });
+      setShowCreateForm(false);
+    } catch (err) {
+      setCreateError(err.response?.data?.error || '创建失败');
+    } finally {
+      setCreating(false);
+    }
+  };
+
+  const handleRoleChange = async (mod, newRole) => {
+    try {
+      await updateModRole(mod.id, newRole);
+      setMods(prev => prev.map(m => m.id === mod.id ? { ...m, role: newRole } : m));
+    } catch (err) {
+      alert(err.response?.data?.error || '修改失败');
+    }
+  };
+
+  const handleDelete = async (mod) => {
+    if (!confirm(`确定删除用户 "${mod.username}"？此操作不可撤销。`)) return;
+    try {
+      await deleteMod(mod.id);
+      setMods(prev => prev.filter(m => m.id !== mod.id));
+    } catch (err) {
+      alert(err.response?.data?.error || '删除失败');
+    }
+  };
 
   const handleCreateInvite = async () => {
     const res = await createInvite(expiresHours);
@@ -33,12 +76,6 @@ export default function ModsPage() {
     setInvites(prev => prev.filter(i => i.id !== id));
   };
 
-  const handleDisable = async (modId, username) => {
-    if (!confirm(`确定禁用房管 "${username}" 的账户？`)) return;
-    await deleteMod(modId);
-    setMods(prev => prev.map(m => m.id === modId ? { ...m, disabled_at: Date.now() } : m));
-  };
-
   const copyLink = () => {
     if (!newInvite?.link) return;
     navigator.clipboard.writeText(newInvite.link);
@@ -49,10 +86,10 @@ export default function ModsPage() {
   return (
     <div className="mods-page">
       <div className="mods-header">
-        <span className="mods-title">房管管理</span>
+        <span className="mods-title">用户管理</span>
         <div className="mods-tabs">
-          <button className={tab === 'mods' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('mods')}>
-            房管列表
+          <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>
+            用户列表
           </button>
           <button className={tab === 'invites' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('invites')}>
             邀请码
@@ -60,40 +97,81 @@ export default function ModsPage() {
         </div>
       </div>
 
-      {tab === 'mods' && (
+      {tab === 'users' && (
         <div className="mods-content">
+          <div className="mods-toolbar">
+            <button className="mods-create-btn" onClick={() => { setShowCreateForm(v => !v); setCreateError(''); }}>
+              {showCreateForm ? '收起' : '+ 新建用户'}
+            </button>
+          </div>
+
+          {showCreateForm && (
+            <form className="mods-create-form" onSubmit={handleCreate}>
+              <input
+                className="mods-field-input"
+                placeholder="用户名"
+                value={createForm.username}
+                onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))}
+                required
+                autoFocus
+              />
+              <input
+                className="mods-field-input"
+                type="password"
+                placeholder="密码（至少 6 位）"
+                value={createForm.password}
+                onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
+                required
+              />
+              <select
+                className="mods-field-select"
+                value={createForm.role}
+                onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}
+              >
+                <option value="mod">普通房管</option>
+                <option value="admin">系统管理员</option>
+              </select>
+              {createError && <span className="mods-create-error">{createError}</span>}
+              <button type="submit" className="mods-create-submit" disabled={creating}>
+                {creating ? '创建中...' : '确认创建'}
+              </button>
+            </form>
+          )}
+
           <table className="mods-table">
             <thead>
               <tr>
                 <th>用户名</th>
                 <th>角色</th>
-                <th>注册时间</th>
+                <th>创建时间</th>
                 <th>邀请人</th>
-                <th>状态</th>
                 <th>操作</th>
               </tr>
             </thead>
             <tbody>
               {mods.map(mod => (
-                <tr key={mod.id} className={mod.disabled_at ? 'mods-row-disabled' : ''}>
+                <tr key={mod.id}>
                   <td className="mods-username">{mod.username}</td>
                   <td>
-                    <span className={`mods-role-badge ${mod.role}`}>{mod.role === 'admin' ? '管理员' : '房管'}</span>
+                    <span className={`mods-role-badge ${mod.role}`}>
+                      {mod.role === 'admin' ? '系统管理员' : '普通房管'}
+                    </span>
                   </td>
                   <td className="mods-time">{formatTs(mod.created_at)}</td>
                   <td className="mods-invitedby">{mod.invited_by_name || '—'}</td>
-                  <td>
-                    {mod.disabled_at
-                      ? <span className="mods-status-disabled">已禁用</span>
-                      : <span className="mods-status-active">正常</span>
-                    }
-                  </td>
-                  <td>
-                    {!mod.disabled_at && mod.role !== 'admin' && (
-                      <button className="mods-disable-btn" onClick={() => handleDisable(mod.id, mod.username)}>
-                        禁用
+                  <td className="mods-actions">
+                    {mod.role === 'mod' ? (
+                      <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
+                        设为管理员
+                      </button>
+                    ) : (
+                      <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
+                        设为房管
                       </button>
                     )}
+                    <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>
+                      删除
+                    </button>
                   </td>
                 </tr>
               ))}
@@ -157,7 +235,7 @@ export default function ModsPage() {
                       }
                     </td>
                     <td>
-                      <button className="mods-disable-btn" onClick={() => handleDeleteInvite(inv.id)}>
+                      <button className="mods-delete-btn" onClick={() => handleDeleteInvite(inv.id)}>
                         删除
                       </button>
                     </td>

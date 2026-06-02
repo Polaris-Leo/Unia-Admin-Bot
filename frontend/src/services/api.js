@@ -71,6 +71,12 @@ export const deleteUserTag = (tagId) =>
 export const getMods = () =>
   api.get('/mods');
 
+export const createMod = (data) =>
+  api.post('/mods', data);
+
+export const updateModRole = (modId, role) =>
+  api.patch(`/mods/${modId}/role`, { role });
+
 export const deleteMod = (modId) =>
   api.delete(`/mods/${modId}`);
 
