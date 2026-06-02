@@ -77,6 +77,9 @@ export const createMod = (data) =>
 export const updateModRole = (modId, role) =>
   api.patch(`/mods/${modId}/role`, { role });
 
+export const updateModProfile = (modId, data) =>
+  api.patch(`/mods/${modId}/profile`, data);
+
 export const disableMod = (modId) =>
   api.patch(`/mods/${modId}/disable`);
 

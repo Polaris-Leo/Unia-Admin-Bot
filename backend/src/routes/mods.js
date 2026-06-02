@@ -39,6 +39,30 @@ router.post('/', requireAuth, requireAdmin, async (req, res, next) => {
   } catch (e) { next(e); }
 });
 
+// 修改用户名或密码（所有用户均可操作，包括超级管理员）
+router.patch('/:modId/profile', requireAuth, requireAdmin, async (req, res, next) => {
+  try {
+    const id = Number(req.params.modId);
+    const { username, password } = req.body;
+    if (!username && !password) return res.status(400).json({ error: '请提供新用户名或新密码' });
+
+    if (username) {
+      const exists = db.prepare('SELECT id FROM mods WHERE username = ? AND id != ?').get(username, id);
+      if (exists) return res.status(400).json({ error: '用户名已被使用' });
+      db.prepare('UPDATE mods SET username = ? WHERE id = ?').run(username, id);
+    }
+
+    if (password) {
+      if (password.length < 6) return res.status(400).json({ error: '密码至少 6 位' });
+      const hash = await bcrypt.hash(password, 12);
+      db.prepare('UPDATE mods SET password_hash = ? WHERE id = ?').run(hash, id);
+    }
+
+    const updated = db.prepare('SELECT id, username, role, is_superadmin FROM mods WHERE id = ?').get(id);
+    res.json(updated);
+  } catch (e) { next(e); }
+});
+
 // 禁用用户
 router.patch('/:modId/disable', requireAuth, requireAdmin, (req, res, next) => {
   try {

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMods, createMod, updateModRole, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
+import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
 import './ModsPage.css';
 
 function formatTs(ms) {
@@ -10,6 +10,12 @@ export default function ModsPage() {
   const [mods, setMods] = useState([]);
   const [invites, setInvites] = useState([]);
   const [tab, setTab] = useState('users');
+
+  // 编辑用户
+  const [editingId, setEditingId] = useState(null);
+  const [editForm, setEditForm] = useState({ username: '', password: '' });
+  const [editError, setEditError] = useState('');
+  const [editing, setEditing] = useState(false);
 
   // 新建用户表单
   const [showCreateForm, setShowCreateForm] = useState(false);
@@ -52,6 +58,34 @@ export default function ModsPage() {
       setMods(prev => prev.map(m => m.id === mod.id ? { ...m, role: newRole } : m));
     } catch (err) {
       alert(err.response?.data?.error || '修改失败');
+    }
+  };
+
+  const startEdit = (mod) => {
+    setEditingId(mod.id);
+    setEditForm({ username: mod.username, password: '' });
+    setEditError('');
+  };
+
+  const cancelEdit = () => { setEditingId(null); setEditError(''); };
+
+  const handleEditSubmit = async (e) => {
+    e.preventDefault();
+    setEditError('');
+    setEditing(true);
+    try {
+      const payload = {};
+      const currentMod = mods.find(m => m.id === editingId);
+      if (editForm.username !== currentMod.username) payload.username = editForm.username;
+      if (editForm.password) payload.password = editForm.password;
+      if (!Object.keys(payload).length) { cancelEdit(); setEditing(false); return; }
+      const res = await updateModProfile(editingId, payload);
+      setMods(prev => prev.map(m => m.id === editingId ? { ...m, ...res.data } : m));
+      cancelEdit();
+    } catch (err) {
+      setEditError(err.response?.data?.error || '修改失败');
+    } finally {
+      setEditing(false);
     }
   };
 
@@ -168,6 +202,34 @@ export default function ModsPage() {
             </thead>
             <tbody>
               {mods.map(mod => (
+                editingId === mod.id ? (
+                  <tr key={mod.id} className="mods-row-editing">
+                    <td colSpan={5}>
+                      <form className="mods-edit-form" onSubmit={handleEditSubmit}>
+                        <span className="mods-edit-label">修改 {mod.username}</span>
+                        <input
+                          className="mods-field-input"
+                          placeholder="新用户名（留空不改）"
+                          value={editForm.username}
+                          onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
+                          autoFocus
+                        />
+                        <input
+                          className="mods-field-input"
+                          type="password"
+                          placeholder="新密码（留空不改）"
+                          value={editForm.password}
+                          onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
+                        />
+                        {editError && <span className="mods-create-error">{editError}</span>}
+                        <button type="submit" className="mods-create-submit" disabled={editing}>
+                          {editing ? '保存中...' : '保存'}
+                        </button>
+                        <button type="button" className="mods-cancel-btn" onClick={cancelEdit}>取消</button>
+                      </form>
+                    </td>
+                  </tr>
+                ) : (
                 <tr key={mod.id} className={mod.disabled_at ? 'mods-row-disabled' : ''}>
                   <td className="mods-username">
                     {mod.username}
@@ -181,6 +243,7 @@ export default function ModsPage() {
                   <td className="mods-time">{formatTs(mod.created_at)}</td>
                   <td className="mods-invitedby">{mod.invited_by_name || '—'}</td>
                   <td className="mods-actions">
+                    <button className="mods-edit-btn" onClick={() => startEdit(mod)}>修改</button>
                     {!mod.is_superadmin && (
                       <>
                         {mod.role === 'mod' ? (
@@ -205,6 +268,7 @@ export default function ModsPage() {
                     )}
                   </td>
                 </tr>
+                )
               ))}
             </tbody>
           </table>

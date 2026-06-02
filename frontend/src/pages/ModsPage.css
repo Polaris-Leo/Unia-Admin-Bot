@@ -105,6 +105,27 @@
 }
 .mods-role-btn-demote:hover { background: var(--warning); color: #fff; }
 
+.mods-edit-btn {
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  background: var(--bg-3); color: var(--text-2);
+  font-size: 11px; border: 1px solid var(--border);
+}
+.mods-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
+
+.mods-row-editing td { padding: 6px 14px; background: var(--bg-3); }
+
+.mods-edit-form {
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.mods-edit-label { font-size: 12px; color: var(--text-2); white-space: nowrap; }
+
+.mods-cancel-btn {
+  padding: 5px 12px; border-radius: var(--radius-sm);
+  background: transparent; color: var(--text-3);
+  font-size: 12px; border: 1px solid var(--border);
+}
+.mods-cancel-btn:hover { color: var(--text); }
+
 .mods-disable-btn {
   padding: 2px 8px; border-radius: var(--radius-sm);
   background: rgba(250,173,20,0.1); color: var(--warning);
