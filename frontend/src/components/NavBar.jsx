@@ -14,11 +14,17 @@ export default function NavBar() {
   const fetchCookieStatus = () =>
     api.get('/cookie-status').then(r => setCookieStatus(r.data)).catch(() => {});
 
+  const refreshMe = () => getMe().then(r => setMe(r.data)).catch(() => {});
+
   useEffect(() => {
-    getMe().then(r => setMe(r.data)).catch(() => {});
+    refreshMe();
     fetchCookieStatus();
     const timer = setInterval(fetchCookieStatus, 30000);
-    return () => clearInterval(timer);
+    window.addEventListener('user-profile-updated', refreshMe);
+    return () => {
+      clearInterval(timer);
+      window.removeEventListener('user-profile-updated', refreshMe);
+    };
   }, []);
 
   const handleLogout = () => {

@@ -177,6 +177,7 @@ export default function ModsPage() {
   const handleEditSave = async (payload) => {
     const res = await updateModProfile(editingMod.id, payload);
     setMods(prev => prev.map(m => m.id === editingMod.id ? { ...m, ...res.data } : m));
+    window.dispatchEvent(new CustomEvent('user-profile-updated'));
   };
 
   const handleDisable = async (mod) => {
