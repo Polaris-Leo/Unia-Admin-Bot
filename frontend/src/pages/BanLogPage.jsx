@@ -13,14 +13,14 @@ export default function BanLogPage() {
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [loading, setLoading] = useState(false);
-  const [filters, setFilters] = useState({ modId: '', targetUid: '', roomId: '' });
+  const [filters, setFilters] = useState({ modUsername: '', targetUid: '', targetName: '' });
 
   const pageSize = 50;
 
   const fetchLogs = async (p = page) => {
     setLoading(true);
     try {
-      const params = { page: p, pageSize, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v)) };
+      const params = { page: p, pageSize, ...Object.fromEntries(Object.entries(filters).filter(([, v]) => v.trim())) };
       const res = await getBanLogs(params);
       setRows(res.data.rows);
       setTotal(res.data.total);
@@ -53,19 +53,22 @@ export default function BanLogPage() {
 
       <div className="banlog-filters">
         <input
-          className="banlog-input" placeholder="房间号"
-          value={filters.roomId}
-          onChange={e => setFilters(f => ({ ...f, roomId: e.target.value }))}
+          className="banlog-input" placeholder="房管用户名"
+          value={filters.modUsername}
+          onChange={e => setFilters(f => ({ ...f, modUsername: e.target.value }))}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <input
-          className="banlog-input" placeholder="房管 ID"
-          value={filters.modId}
-          onChange={e => setFilters(f => ({ ...f, modId: e.target.value }))}
-        />
-        <input
-          className="banlog-input" placeholder="被禁用户 UID"
+          className="banlog-input" placeholder="被禁用户 B站ID"
           value={filters.targetUid}
           onChange={e => setFilters(f => ({ ...f, targetUid: e.target.value }))}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
+        />
+        <input
+          className="banlog-input" placeholder="被禁用户用户名"
+          value={filters.targetName}
+          onChange={e => setFilters(f => ({ ...f, targetName: e.target.value }))}
+          onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <button className="banlog-search-btn" onClick={handleSearch}>搜索</button>
       </div>
@@ -75,9 +78,9 @@ export default function BanLogPage() {
           <thead>
             <tr>
               <th>时间</th>
-              <th>房间</th>
               <th>房管</th>
-              <th>被禁用户</th>
+              <th>被禁用户 B站ID</th>
+              <th>被禁用户名</th>
               <th>触发弹幕</th>
               <th>时长</th>
               <th>操作</th>
@@ -93,14 +96,13 @@ export default function BanLogPage() {
             {rows.map(row => (
               <tr key={row.id} className={row.unsilenced_at ? 'banlog-row-unsilenced' : ''}>
                 <td className="banlog-time">{formatTs(row.created_at)}</td>
-                <td>{row.room_id}</td>
                 <td>{row.mod_name}</td>
                 <td>
                   <a href={`https://space.bilibili.com/${row.target_uid}`} target="_blank" rel="noopener noreferrer" className="banlog-user-link">
-                    {row.target_name}
-                    <span className="banlog-uid"> ({row.target_uid})</span>
+                    {row.target_uid}
                   </a>
                 </td>
+                <td>{row.target_name}</td>
                 <td className="banlog-content">{row.trigger_content || '—'}</td>
                 <td>
                   <span className={`banlog-hours ${row.ban_hours === -1 ? 'banlog-hours-perm' : ''}`}>

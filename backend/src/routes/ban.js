@@ -50,22 +50,22 @@ router.get('/list', requireAuth, async (req, res, next) => {
 
 router.get('/logs', requireAuth, (req, res, next) => {
   try {
-    const { modId, targetUid, roomId, from, to, page = 1, pageSize = 50 } = req.query;
+    const { modUsername, targetUid, targetName, from, to, page = 1, pageSize = 50 } = req.query;
     const conditions = [];
     const params = [];
 
-    if (modId)     { conditions.push('b.mod_id = ?');      params.push(Number(modId)); }
-    if (targetUid) { conditions.push('b.target_uid = ?');  params.push(Number(targetUid)); }
-    if (roomId)    { conditions.push('b.room_id = ?');     params.push(String(roomId)); }
-    if (from)      { conditions.push('b.created_at >= ?'); params.push(Number(from)); }
-    if (to)        { conditions.push('b.created_at <= ?'); params.push(Number(to)); }
+    if (modUsername) { conditions.push('m.username LIKE ?');   params.push(`%${modUsername}%`); }
+    if (targetUid)   { conditions.push('b.target_uid = ?');    params.push(Number(targetUid)); }
+    if (targetName)  { conditions.push('b.target_name LIKE ?');params.push(`%${targetName}%`); }
+    if (from)        { conditions.push('b.created_at >= ?');   params.push(Number(from)); }
+    if (to)          { conditions.push('b.created_at <= ?');   params.push(Number(to)); }
 
     const where = conditions.length ? 'WHERE ' + conditions.join(' AND ') : '';
     const offset = (Number(page) - 1) * Number(pageSize);
 
-    const total = db.prepare(
-      `SELECT COUNT(*) AS c FROM ban_logs b ${where}`
-    ).get(...params).c;
+    const total = db.prepare(`
+      SELECT COUNT(*) AS c FROM ban_logs b LEFT JOIN mods m ON m.id = b.mod_id ${where}
+    `).get(...params).c;
 
     const rows = db.prepare(`
       SELECT b.*, m.username AS mod_name
