@@ -5,6 +5,7 @@ import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { initDb } from './db.js';
+import axios from 'axios';
 import authRouter from './routes/auth.js';
 import danmakuRouter, { createDanmakuWSS } from './routes/danmaku.js';
 import banRouter from './routes/ban.js';
@@ -23,6 +24,20 @@ const server = createServer(app);
 app.use(cors({ origin: true, credentials: true }));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+app.get('/api/cookie-status', async (req, res) => {
+  const url = (process.env.COOKIE_MANAGER_URL || '').replace(/\/$/, '');
+  if (!url) {
+    return res.json({ source: 'local', connected: false, configured: false });
+  }
+  try {
+    const r = await axios.get(`${url}/api/accounts/cookie`, { timeout: 3000 });
+    const uid = r.data?.data?.uid;
+    res.json({ source: 'remote', connected: true, configured: true, uid, url });
+  } catch {
+    res.json({ source: 'remote', connected: false, configured: true, url });
+  }
+});
 
 app.use('/api/auth', authRouter);
 app.use('/api/danmaku', danmakuRouter);
