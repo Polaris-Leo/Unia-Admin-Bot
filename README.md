@@ -132,28 +132,11 @@ console.log('密码已重置');
 
 ## Docker 部署
 
-> **推荐用于服务器部署**，无需在服务器上安装 Node.js。
+> **推荐用于服务器部署**，无需在服务器上安装 Node.js，只需安装 Docker。
 
 ### 前提
 
-- 安装 [Docker](https://docs.docker.com/get-docker/)
-- 安装 Docker Compose（见下方说明）
-
-**检查 Compose 是否可用：**
-
-```bash
-docker compose version   # 新版 Docker（推荐）
-docker-compose version   # 旧版独立工具
-```
-
-如果两条命令都不可用，安装 compose 插件：
-
-```bash
-# Debian / Ubuntu
-apt-get update && apt-get install -y docker-compose-plugin
-```
-
-> 下文统一使用 `docker compose`（空格），旧版系统替换为 `docker-compose`（连字符）即可。
+- 安装 [Docker](https://docs.docker.com/get-docker/)（无需 Docker Compose）
 
 ### 步骤
 
@@ -170,55 +153,87 @@ cd Unia-Admin-Bot
 cp backend/.env.example backend/.env
 ```
 
-编辑 `backend/.env`，填写 `JWT_SECRET`、`ROOM_ID`、`BILI_COOKIE_UID` 等必填项。
-**注意**：`FRONTEND_URL` 用于生成邀请链接，部署到服务器时需改为实际访问地址（如 `http://192.168.1.100:3001` 或域名）。
+编辑 `backend/.env`，填写必填项：
 
-**3. 启动**
+| 变量 | 说明 |
+|------|------|
+| `JWT_SECRET` | 随机长字符串，务必修改 |
+| `ROOM_ID` | 直播间房间号 |
+| `BILI_COOKIE_UID` | 用于禁言的 B 站账号 UID |
+| `FRONTEND_URL` | 改为服务器实际地址，如 `http://1.2.3.4:3001`（用于邀请链接） |
 
-```bash
-docker compose up -d
-```
-
-访问 `http://<服务器IP>:3001`，首次启动密码打印到容器日志：
-
-```bash
-docker compose logs app
-```
-
-**4. 停止 / 更新**
+**3. 构建镜像**
 
 ```bash
-# 停止
-docker compose down
-
-# 拉取最新代码后重新构建
-git pull
-docker compose up -d --build
-```
-
-### 数据持久化
-
-容器内数据目录 `/app/backend/data` 已通过 volume 挂载到宿主机 `./data`，包含：
-
-- `admin.db` — 账户、禁言日志、标签
-- `history/` — 弹幕历史 JSONL 文件
-- `cookies.json` — 本地扫码 Cookie（如使用）
-
-只要不删除 `./data` 目录，升级镜像不会丢失数据。
-
-### 手动构建镜像
-
-```bash
-# 构建
 docker build -t unia-admin-bot .
+```
 
-# 运行
+**4. 启动容器**
+
+```bash
 docker run -d \
   -p 3001:3001 \
   -v $(pwd)/data:/app/backend/data \
   --env-file backend/.env \
   --name unia-admin-bot \
+  --restart unless-stopped \
   unia-admin-bot
+```
+
+访问 `http://<服务器IP>:3001`，首次启动密码查看方式：
+
+```bash
+docker logs unia-admin-bot
+```
+
+**5. 停止 / 重启**
+
+```bash
+docker stop unia-admin-bot
+docker start unia-admin-bot
+```
+
+**6. 更新到最新版本**
+
+```bash
+# 拉取最新代码
+git pull
+
+# 重新构建镜像
+docker build -t unia-admin-bot .
+
+# 停止并删除旧容器（数据不会丢失，挂载在 ./data 目录）
+docker stop unia-admin-bot && docker rm unia-admin-bot
+
+# 启动新容器
+docker run -d \
+  -p 3001:3001 \
+  -v $(pwd)/data:/app/backend/data \
+  --env-file backend/.env \
+  --name unia-admin-bot \
+  --restart unless-stopped \
+  unia-admin-bot
+```
+
+### 数据持久化
+
+容器内数据目录 `/app/backend/data` 已通过 `-v` 挂载到宿主机 `./data`，包含：
+
+- `admin.db` — 账户、禁言日志、标签
+- `history/` — 弹幕历史 JSONL 文件
+- `cookies.json` — 本地扫码 Cookie（如使用）
+
+只要不删除 `./data` 目录，更新容器不会丢失任何数据。
+
+### Docker Compose（可选，需较新版本）
+
+如果服务器 Docker 支持 compose 插件（`docker compose version` 有输出），可以使用：
+
+```bash
+docker compose up -d        # 启动
+docker compose down         # 停止
+docker compose up -d --build  # 更新重建
+docker compose logs app     # 查看日志
 ```
 
 ## 迁移 Unia-Danmuku 历史数据
