@@ -9,7 +9,7 @@ const router = Router();
 router.get('/', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const rows = db.prepare(`
-      SELECT m.id, m.username, m.role, m.is_superadmin, m.created_at,
+      SELECT m.id, m.username, m.role, m.is_superadmin, m.disabled_at, m.created_at,
              inv.username AS invited_by_name
       FROM mods m
       LEFT JOIN mods inv ON inv.id = m.invited_by
@@ -36,6 +36,27 @@ router.post('/', requireAuth, requireAdmin, async (req, res, next) => {
     ).run(username, hash, role, Date.now());
 
     res.json({ id: result.lastInsertRowid, username, role });
+  } catch (e) { next(e); }
+});
+
+// 禁用用户
+router.patch('/:modId/disable', requireAuth, requireAdmin, (req, res, next) => {
+  try {
+    const id = Number(req.params.modId);
+    if (id === req.mod.id) return res.status(400).json({ error: '不能禁用自己' });
+    const target = db.prepare('SELECT is_superadmin FROM mods WHERE id = ?').get(id);
+    if (target?.is_superadmin) return res.status(403).json({ error: '超级管理员账户不能禁用' });
+    db.prepare('UPDATE mods SET disabled_at = ? WHERE id = ?').run(Date.now(), id);
+    res.json({ ok: true });
+  } catch (e) { next(e); }
+});
+
+// 启用用户
+router.patch('/:modId/enable', requireAuth, requireAdmin, (req, res, next) => {
+  try {
+    const id = Number(req.params.modId);
+    db.prepare('UPDATE mods SET disabled_at = NULL WHERE id = ?').run(id);
+    res.json({ ok: true });
   } catch (e) { next(e); }
 });
 

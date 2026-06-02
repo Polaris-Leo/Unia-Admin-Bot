@@ -77,6 +77,12 @@ export const createMod = (data) =>
 export const updateModRole = (modId, role) =>
   api.patch(`/mods/${modId}/role`, { role });
 
+export const disableMod = (modId) =>
+  api.patch(`/mods/${modId}/disable`);
+
+export const enableMod = (modId) =>
+  api.patch(`/mods/${modId}/enable`);
+
 export const deleteMod = (modId) =>
   api.delete(`/mods/${modId}`);
 

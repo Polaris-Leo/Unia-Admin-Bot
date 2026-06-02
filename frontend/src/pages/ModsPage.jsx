@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getMods, createMod, updateModRole, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
+import { getMods, createMod, updateModRole, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
 import './ModsPage.css';
 
 function formatTs(ms) {
@@ -52,6 +52,24 @@ export default function ModsPage() {
       setMods(prev => prev.map(m => m.id === mod.id ? { ...m, role: newRole } : m));
     } catch (err) {
       alert(err.response?.data?.error || '修改失败');
+    }
+  };
+
+  const handleDisable = async (mod) => {
+    try {
+      await disableMod(mod.id);
+      setMods(prev => prev.map(m => m.id === mod.id ? { ...m, disabled_at: Date.now() } : m));
+    } catch (err) {
+      alert(err.response?.data?.error || '禁用失败');
+    }
+  };
+
+  const handleEnable = async (mod) => {
+    try {
+      await enableMod(mod.id);
+      setMods(prev => prev.map(m => m.id === mod.id ? { ...m, disabled_at: null } : m));
+    } catch (err) {
+      alert(err.response?.data?.error || '启用失败');
     }
   };
 
@@ -150,8 +168,11 @@ export default function ModsPage() {
             </thead>
             <tbody>
               {mods.map(mod => (
-                <tr key={mod.id}>
-                  <td className="mods-username">{mod.username}</td>
+                <tr key={mod.id} className={mod.disabled_at ? 'mods-row-disabled' : ''}>
+                  <td className="mods-username">
+                    {mod.username}
+                    {mod.disabled_at && <span className="mods-disabled-badge">已禁用</span>}
+                  </td>
                   <td>
                     <span className={`mods-role-badge ${mod.is_superadmin ? 'superadmin' : mod.role}`}>
                       {mod.is_superadmin ? '超级管理员' : mod.role === 'admin' ? '系统管理员' : '普通房管'}
@@ -161,20 +182,23 @@ export default function ModsPage() {
                   <td className="mods-invitedby">{mod.invited_by_name || '—'}</td>
                   <td className="mods-actions">
                     {!mod.is_superadmin && (
-                      mod.role === 'mod' ? (
-                        <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
-                          设为管理员
-                        </button>
-                      ) : (
-                        <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
-                          设为房管
-                        </button>
-                      )
-                    )}
-                    {!mod.is_superadmin && (
-                      <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>
-                        删除
-                      </button>
+                      <>
+                        {mod.role === 'mod' ? (
+                          <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
+                            设为管理员
+                          </button>
+                        ) : (
+                          <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
+                            设为房管
+                          </button>
+                        )}
+                        {mod.disabled_at ? (
+                          <button className="mods-enable-btn" onClick={() => handleEnable(mod)}>启用</button>
+                        ) : (
+                          <button className="mods-disable-btn" onClick={() => handleDisable(mod)}>禁用</button>
+                        )}
+                        <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>删除</button>
+                      </>
                     )}
                     {mod.is_superadmin && (
                       <span className="mods-protected-label">受保护</span>

@@ -105,12 +105,36 @@
 }
 .mods-role-btn-demote:hover { background: var(--warning); color: #fff; }
 
+.mods-disable-btn {
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  background: rgba(250,173,20,0.1); color: var(--warning);
+  font-size: 11px; border: 1px solid rgba(250,173,20,0.25);
+}
+.mods-disable-btn:hover { background: var(--warning); color: #fff; }
+
+.mods-enable-btn {
+  padding: 2px 8px; border-radius: var(--radius-sm);
+  background: rgba(82,196,26,0.1); color: var(--success);
+  font-size: 11px; border: 1px solid rgba(82,196,26,0.25);
+}
+.mods-enable-btn:hover { background: var(--success); color: #fff; }
+
 .mods-delete-btn {
   padding: 2px 8px; border-radius: var(--radius-sm);
   background: rgba(255,77,79,0.1); color: var(--danger);
   font-size: 11px; border: 1px solid rgba(255,77,79,0.25);
 }
 .mods-delete-btn:hover { background: var(--danger); color: #fff; }
+
+.mods-disabled-badge {
+  margin-left: 6px; font-size: 10px;
+  padding: 1px 6px; border-radius: 20px;
+  background: rgba(255,77,79,0.1); color: var(--danger);
+  border: 1px solid rgba(255,77,79,0.2);
+  vertical-align: middle;
+}
+
+.mods-row-disabled td { opacity: 0.55; }
 
 .mods-invite-create {
   display: flex; align-items: center; gap: 10px;
