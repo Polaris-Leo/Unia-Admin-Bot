@@ -1,6 +1,7 @@
 import 'dotenv/config';
 import express from 'express';
 import { createServer } from 'http';
+import fs from 'fs';
 import cors from 'cors';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -18,6 +19,20 @@ import { loadCookies, loadLocalCookies } from './utils/cookieStorage.js';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
 
+// 启动时补全 data/ 下可能缺失的文件和目录
+function ensureDataFiles() {
+  const dataDir = path.join(process.cwd(), 'data');
+  fs.mkdirSync(path.join(dataDir, 'history'), { recursive: true });
+  for (const file of ['face-cache.json', 'emote-cache.json', 'gift-cache.json']) {
+    const filePath = path.join(dataDir, file);
+    if (!fs.existsSync(filePath)) {
+      fs.writeFileSync(filePath, '{}');
+      console.log(`📁 已初始化缺失文件: data/${file}`);
+    }
+  }
+}
+
+ensureDataFiles();
 initDb();
 
 const app = express();

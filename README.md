@@ -4,11 +4,12 @@ B 站直播房管工具，提供实时弹幕控制台、禁言管理、多房管
 
 ## 功能
 
-- **实时弹幕控制台** — 弹幕/礼物/SC 分列展示，常驻筛选栏（用户名/UID/内容关键词实时高亮过滤）
+- **实时弹幕控制台** — 弹幕/礼物/SC 分列展示，常驻筛选栏（用户名/UID/内容关键词实时高亮过滤）；弹幕内嵌表情自动渲染为图片
 - **用户操作面板** — 点击用户名弹出：禁言（本场/1h/12h/永久）、解禁、内部标签/备注、查看历史弹幕
 - **禁言日志** — 完整记录谁在何时对哪位用户执行了何种禁言操作，支持筛选和一键解禁
-- **历史弹幕搜索** — 跨场次搜索，按用户 UID、关键词、时间范围过滤，最多返回 500 条
-- **多房管账户** — 邀请制注册，admin 管理账户，JWT 鉴权
+- **历史弹幕** — 双 Tab 界面：「历史场次」按场次浏览（弹幕/SC/礼物/上舰分类）；「搜索」跨场次按 UID、关键词、时间范围过滤，最多返回 500 条
+- **多房管账户** — 支持直接创建/邀请制注册，admin 管理账户，JWT 鉴权；角色分为「普通房管」和「系统管理员」
+- **离线/轮播模式** — 直播间断开时继续记录传入消息，重连后无缝续接
 - **弹幕数据兼容** — 存储格式与 Unia-Danmuku 完全一致（JSONL），历史数据可直接复制迁移
 
 ## 依赖服务
@@ -104,10 +105,16 @@ npm run dev
 
 首次启动时自动创建 `admin` 账户，密码打印到终端。
 
+**直接创建账户**（需系统管理员权限）：
+
 1. 以 `admin` 登录后，进入「房管管理」页面
-2. 点击「生成邀请链接」，设置有效期后复制链接
-3. 将链接发给新房管，对方打开后填写用户名和密码完成注册
-4. 邀请链接一次性使用，过期自动失效
+2. 点击「新建账户」，填写用户名、密码、角色后创建
+
+**邀请制注册**：
+
+1. 点击「生成邀请链接」，设置有效期后复制链接
+2. 将链接发给新房管，对方打开后填写用户名和密码完成注册
+3. 邀请链接一次性使用，过期自动失效
 
 **重置 admin 密码：**
 
@@ -121,6 +128,79 @@ const db = new DatabaseSync('./data/admin.db');
 db.prepare('UPDATE mods SET password_hash=? WHERE username=?').run(hash, 'admin');
 console.log('密码已重置');
 "
+```
+
+## Docker 部署
+
+> **推荐用于服务器部署**，无需在服务器上安装 Node.js。
+
+### 前提
+
+- 安装 [Docker](https://docs.docker.com/get-docker/) 和 [Docker Compose](https://docs.docker.com/compose/install/)
+
+### 步骤
+
+**1. 克隆项目**
+
+```bash
+git clone <repo-url> Unia-Admin-Bot
+cd Unia-Admin-Bot
+```
+
+**2. 配置环境变量**
+
+```bash
+cp backend/.env.example backend/.env
+```
+
+编辑 `backend/.env`，填写 `JWT_SECRET`、`ROOM_ID`、`BILI_COOKIE_UID` 等必填项。
+
+**3. 启动**
+
+```bash
+docker compose up -d
+```
+
+访问 `http://<服务器IP>:3001`，首次启动密码打印到容器日志：
+
+```bash
+docker compose logs app
+```
+
+**4. 停止 / 更新**
+
+```bash
+# 停止
+docker compose down
+
+# 拉取最新代码后重新构建
+git pull
+docker compose up -d --build
+```
+
+### 数据持久化
+
+容器内数据目录 `/app/backend/data` 已通过 volume 挂载到宿主机 `./data`，包含：
+
+- `admin.db` — 账户、禁言日志、标签
+- `history/` — 弹幕历史 JSONL 文件
+- `cookies.json` — 本地扫码 Cookie（如使用）
+
+只要不删除 `./data` 目录，升级镜像不会丢失数据。
+
+### 手动构建镜像
+
+```bash
+# 构建
+docker build -t unia-admin-bot .
+
+# 运行
+docker run -d \
+  -p 3001:3001 \
+  -v $(pwd)/data:/app/backend/data \
+  --env-file backend/.env \
+  --name unia-admin-bot \
+  unia-admin-bot
 ```
 
 ## 迁移 Unia-Danmuku 历史数据
@@ -145,3 +225,4 @@ cp ../Unia-Danmuku/backend/data/cookies.json ./backend/data/cookies.json
 | 前端框架 | React · Vite |
 | 路由 | react-router-dom |
 | HTTP 客户端 | axios |
+| 容器化 | Docker（多阶段构建）|

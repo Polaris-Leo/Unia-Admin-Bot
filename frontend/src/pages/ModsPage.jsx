@@ -7,7 +7,7 @@ function formatTs(ms) {
 }
 
 function EditUserModal({ mod, onClose, onSave }) {
-  const [form, setForm] = useState({ username: mod.username, password: '', confirm: '' });
+  const [form, setForm] = useState({ username: mod.username, password: '', confirm: '', role: mod.role });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef(null);
@@ -28,6 +28,7 @@ function EditUserModal({ mod, onClose, onSave }) {
     const payload = {};
     if (form.username !== mod.username) payload.username = form.username;
     if (form.password) payload.password = form.password;
+    if (!mod.is_superadmin && form.role !== mod.role) payload.role = form.role;
     if (!Object.keys(payload).length) { onClose(); return; }
     setSaving(true);
     try {
@@ -59,6 +60,20 @@ function EditUserModal({ mod, onClose, onSave }) {
             />
           </div>
           <div className="modal-field">
+            <label>角色</label>
+            {mod.is_superadmin ? (
+              <input className="modal-input" value="超级管理员" disabled />
+            ) : (
+              <div className="select-wrap">
+                <select className="modal-input" value={form.role}
+                  onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                  <option value="mod">普通房管</option>
+                  <option value="admin">系统管理员</option>
+                </select>
+              </div>
+            )}
+          </div>
+          <div className="modal-field">
             <label>新密码</label>
             <input
               className="modal-input"
@@ -85,6 +100,76 @@ function EditUserModal({ mod, onClose, onSave }) {
             <button type="button" className="modal-btn-cancel" onClick={onClose}>取消</button>
             <button type="submit" className="modal-btn-confirm" disabled={saving}>
               {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function CreateUserModal({ onClose, onCreate }) {
+  const [form, setForm] = useState({ username: '', password: '', role: 'mod' });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSaving(true);
+    try {
+      await onCreate(form);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || '创建失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" ref={ref} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">新建用户</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <form className="modal-body" onSubmit={handleSubmit}>
+          <div className="modal-field">
+            <label>用户名</label>
+            <input className="modal-input" value={form.username}
+              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              autoFocus required />
+          </div>
+          <div className="modal-field">
+            <label>密码</label>
+            <input className="modal-input" type="password" placeholder="至少 6 位"
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+              required />
+          </div>
+          <div className="modal-field">
+            <label>角色</label>
+            <div className="select-wrap">
+              <select className="modal-input" value={form.role}
+                onChange={e => setForm(f => ({ ...f, role: e.target.value }))}>
+                <option value="mod">普通房管</option>
+                <option value="admin">系统管理员</option>
+              </select>
+            </div>
+          </div>
+          {error && <div className="modal-error">{error}</div>}
+          <div className="modal-footer">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>取消</button>
+            <button type="submit" className="modal-btn-confirm" disabled={saving}>
+              {saving ? '创建中...' : '确认创建'}
             </button>
           </div>
         </form>
@@ -129,10 +214,7 @@ export default function ModsPage() {
   const [editingMod, setEditingMod] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
 
-  const [showCreateForm, setShowCreateForm] = useState(false);
-  const [createForm, setCreateForm] = useState({ username: '', password: '', role: 'mod' });
-  const [createError, setCreateError] = useState('');
-  const [creating, setCreating] = useState(false);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [expiresHours, setExpiresHours] = useState(24);
   const [newInvite, setNewInvite] = useState(null);
@@ -146,20 +228,9 @@ export default function ModsPage() {
 
   useEffect(() => { load(); }, []);
 
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setCreateError('');
-    setCreating(true);
-    try {
-      const res = await createMod(createForm);
-      setMods(prev => [{ ...res.data, created_at: Date.now(), invited_by_name: null }, ...prev]);
-      setCreateForm({ username: '', password: '', role: 'mod' });
-      setShowCreateForm(false);
-    } catch (err) {
-      setCreateError(err.response?.data?.error || '创建失败');
-    } finally {
-      setCreating(false);
-    }
+  const handleCreate = async (form) => {
+    const res = await createMod(form);
+    setMods(prev => [{ ...res.data, created_at: Date.now(), invited_by_name: null }, ...prev]);
   };
 
   const handleRoleChange = async (mod, newRole) => {
@@ -175,8 +246,15 @@ export default function ModsPage() {
   };
 
   const handleEditSave = async (payload) => {
-    const res = await updateModProfile(editingMod.id, payload);
-    setMods(prev => prev.map(m => m.id === editingMod.id ? { ...m, ...res.data } : m));
+    const { role, ...profilePayload } = payload;
+    if (role) {
+      await updateModRole(editingMod.id, role);
+      setMods(prev => prev.map(m => m.id === editingMod.id ? { ...m, role } : m));
+    }
+    if (Object.keys(profilePayload).length) {
+      const res = await updateModProfile(editingMod.id, profilePayload);
+      setMods(prev => prev.map(m => m.id === editingMod.id ? { ...m, ...res.data } : m));
+    }
     window.dispatchEvent(new CustomEvent('user-profile-updated'));
   };
 
@@ -255,30 +333,10 @@ export default function ModsPage() {
       {tab === 'users' && (
         <div className="mods-content">
           <div className="mods-toolbar">
-            <button className="mods-create-btn" onClick={() => { setShowCreateForm(v => !v); setCreateError(''); }}>
-              {showCreateForm ? '收起' : '+ 新建用户'}
+            <button className="mods-create-btn" onClick={() => setShowCreateModal(true)}>
+              + 新建用户
             </button>
           </div>
-
-          {showCreateForm && (
-            <form className="mods-create-form" onSubmit={handleCreate}>
-              <input className="mods-field-input" placeholder="用户名" value={createForm.username}
-                onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))} required autoFocus />
-              <input className="mods-field-input" type="password" placeholder="密码（至少 6 位）" value={createForm.password}
-                onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} required />
-              <div className="select-wrap">
-                <select className="mods-field-select" value={createForm.role}
-                  onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
-                  <option value="mod">普通房管</option>
-                  <option value="admin">系统管理员</option>
-                </select>
-              </div>
-              {createError && <span className="mods-create-error">{createError}</span>}
-              <button type="submit" className="mods-create-submit" disabled={creating}>
-                {creating ? '创建中...' : '确认创建'}
-              </button>
-            </form>
-          )}
 
           <table className="mods-table">
             <thead>
@@ -302,10 +360,9 @@ export default function ModsPage() {
                     <button className="mods-edit-btn" onClick={() => setEditingMod(mod)}>修改</button>
                     {!mod.is_superadmin && (
                       <>
-                        {mod.role === 'mod'
-                          ? <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>设为管理员</button>
-                          : <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>设为房管</button>
-                        }
+                        {mod.role === 'mod' && (
+                          <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>设为管理员</button>
+                        )}
                         {mod.disabled_at
                           ? <button className="mods-enable-btn" onClick={() => handleEnable(mod)}>启用</button>
                           : <button className="mods-disable-btn" onClick={() => handleDisable(mod)}>禁用</button>
@@ -370,6 +427,13 @@ export default function ModsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {showCreateModal && (
+        <CreateUserModal
+          onClose={() => setShowCreateModal(false)}
+          onCreate={handleCreate}
+        />
       )}
 
       {editingMod && (

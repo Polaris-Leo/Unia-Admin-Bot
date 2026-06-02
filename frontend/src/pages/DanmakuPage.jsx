@@ -111,6 +111,7 @@ export default function DanmakuPage() {
       } catch {}
     };
     ws.onclose = (e) => {
+      if (wsRef.current !== ws) return; // 已被新连接替换，忽略此次关闭
       if (e.code === 4001 || e.reason === 'Unauthorized') return;
       const delay = Math.min(1000 * Math.pow(2, reconnectCount.current++), 30000);
       if (reconnectCount.current <= 5) {
@@ -215,6 +216,22 @@ export default function DanmakuPage() {
     );
   };
 
+  const renderContent = (content, emots) => {
+    if (!content) return null;
+    if (!emots) return highlight(content);
+    const parts = content.split(/(\[[^\]]+\])/);
+    return parts.map((part, i) => {
+      const emot = part.startsWith('[') && part.endsWith(']') ? emots[part] : null;
+      if (emot) {
+        return (
+          <img key={i} src={emot.url} alt={part} title={part}
+            className="dm-emote" referrerPolicy="no-referrer" />
+        );
+      }
+      return <span key={i}>{highlight(part)}</span>;
+    });
+  };
+
   const filtered = filterDanmaku(danmakuList);
 
   return (
@@ -267,6 +284,9 @@ export default function DanmakuPage() {
               ×
             </button>
           )}
+          <button className="dm-history-btn" onClick={() => setHistoryDrawer({ open: true, uid: null })}>
+            历史
+          </button>
         </div>
       </div>
 
@@ -306,7 +326,7 @@ export default function DanmakuPage() {
                     )}
                     <span className="dm-username">{highlight(msg.user?.username)}</span>
                   </div>
-                  <span className="dm-content">{highlight(msg.content)}</span>
+                  <span className="dm-content">{renderContent(msg.content, msg.emots)}</span>
                 </div>
               );
             })}

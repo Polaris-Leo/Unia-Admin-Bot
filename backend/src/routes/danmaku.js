@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { BilibiliLiveWS } from '../services/bilibiliLiveWS.js';
 import { loadCookies } from '../utils/cookieStorage.js';
+import { getLastSessionId } from '../utils/historyStorage.js';
 import { requireAuth } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -69,10 +70,16 @@ export async function connectRoom(roomId) {
       if (liveStatus && currentWS.onLiveStatus) currentWS.onLiveStatus(liveStatus);
 
       // 非直播状态（轮播/未开播）currentSessionId 为 null，无法存储弹幕
-      // 用当前时间戳创建兜底 session，确保消息能落盘
+      // 优先复用磁盘上最近的 session，避免每次重连都生成新文件夹
       if (!currentWS.currentSessionId) {
-        currentWS.currentSessionId = Math.floor(Date.now() / 1000);
-        console.log(`📝 非直播状态，创建兜底 session: ${currentWS.currentSessionId}`);
+        const lastSession = await getLastSessionId(currentRoomId);
+        if (lastSession) {
+          currentWS.currentSessionId = lastSession;
+          console.log(`📝 非直播状态，复用已有 session: ${lastSession}`);
+        } else {
+          currentWS.currentSessionId = Math.floor(Date.now() / 1000);
+          console.log(`📝 非直播状态，创建兜底 session: ${currentWS.currentSessionId}`);
+        }
       }
     } catch (e) {
       console.error('[danmaku] 拉取房间信息失败:', e.message);
