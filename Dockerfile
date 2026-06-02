@@ -1,20 +1,20 @@
 # Stage 1: Build frontend
-FROM node:24-slim AS frontend-builder
+FROM node:24-alpine AS frontend-builder
 WORKDIR /app/frontend
 COPY frontend/package*.json ./
-RUN npm install
+RUN npm install --no-fund --no-audit
 COPY frontend/ ./
 RUN npm run build
 
 # Stage 2: Install backend dependencies (needs build tools for bcrypt native addon)
-FROM node:24-slim AS backend-builder
-RUN apt-get update && apt-get install -y python3 make g++ && rm -rf /var/lib/apt/lists/*
+FROM node:24-alpine AS backend-builder
+RUN apk add --no-cache python3 make g++
 WORKDIR /app/backend
 COPY backend/package*.json ./
-RUN npm install --omit=dev
+RUN npm install --omit=dev --no-fund --no-audit
 
 # Stage 3: Production image
-FROM node:24-slim AS runner
+FROM node:24-alpine AS runner
 WORKDIR /app/backend
 
 COPY --from=backend-builder /app/backend/node_modules ./node_modules
