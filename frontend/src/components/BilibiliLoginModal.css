@@ -51,6 +51,15 @@
 .blmodal-source-val { font-size: 11px; color: var(--text-3); }
 .blmodal-source.active .blmodal-source-val { color: var(--success); }
 
+.blmodal-warn {
+  font-size: 11px;
+  color: var(--warning);
+  background: rgba(250,173,20,0.08);
+  border: 1px solid rgba(250,173,20,0.25);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+}
+
 .blmodal-divider { height: 1px; background: var(--border); }
 
 .blmodal-qr-section {

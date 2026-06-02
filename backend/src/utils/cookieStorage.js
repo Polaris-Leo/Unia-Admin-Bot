@@ -18,25 +18,34 @@ function getCookieManagerUrl() {
 
 /**
  * 从 Cookie 管理服务获取有效 Cookie（内部函数）
+ * 优先使用 BILI_COOKIE_UID 指定账号，未配置则取任意可用账号
  * @returns {Promise<Object|null>}
  */
 function fetchCookieFromManager() {
   const COOKIE_MANAGER_URL = getCookieManagerUrl();
   if (!COOKIE_MANAGER_URL) return Promise.resolve(null);
 
-  return new Promise(resolve => {
-    const url = `${COOKIE_MANAGER_URL}/api/accounts/cookie`;
-    const mod = url.startsWith('https') ? https : http;
+  const uid = (process.env.BILI_COOKIE_UID || '').trim();
+  const endpoint = uid
+    ? `${COOKIE_MANAGER_URL}/api/accounts/${uid}/cookie`
+    : `${COOKIE_MANAGER_URL}/api/accounts/cookie`;
 
-    const req = mod.get(url, { timeout: 3000 }, res => {
+  if (!uid) {
+    console.warn('⚠️  未配置 BILI_COOKIE_UID，将取任意可用账号（房管操作可能无权限）');
+  }
+
+  return new Promise(resolve => {
+    const mod = endpoint.startsWith('https') ? https : http;
+
+    const req = mod.get(endpoint, { timeout: 3000 }, res => {
       let body = '';
       res.on('data', chunk => { body += chunk; });
       res.on('end', () => {
         try {
           const data = JSON.parse(body);
           if (data.success && data.data?.cookies) {
-            const uid = data.data.uid || '?';
-            console.log(`🍪 [Cookie管理服务] 已获取账号 UID:${uid} 的 Cookie`);
+            const gotUid = data.data.uid || uid || '?';
+            console.log(`🍪 [Cookie管理服务] 已获取账号 UID:${gotUid} 的 Cookie`);
             resolve(data.data.cookies);
           } else {
             resolve(null);

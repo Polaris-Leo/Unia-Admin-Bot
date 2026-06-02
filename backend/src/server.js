@@ -30,12 +30,18 @@ app.use(express.urlencoded({ extended: true }));
 app.get('/api/cookie-status', async (req, res) => {
   const url = (process.env.COOKIE_MANAGER_URL || '').replace(/\/$/, '');
 
-  // 检查远程 BiliCookie 服务
-  let remote = { connected: false, uid: null };
+  // 检查远程 BiliCookie 服务（用配置的 UID 验证可达性）
+  const configuredUid = (process.env.BILI_COOKIE_UID || '').trim();
+  let remote = { connected: false, uid: null, configuredUid: configuredUid || null };
   if (url) {
+    const endpoint = configuredUid
+      ? `${url}/api/accounts/${configuredUid}/cookie`
+      : `${url}/api/accounts/cookie`;
     try {
-      const r = await axios.get(`${url}/api/accounts/cookie`, { timeout: 3000 });
-      remote = { connected: true, uid: r.data?.data?.uid || null };
+      const r = await axios.get(endpoint, { timeout: 3000 });
+      if (r.data?.success) {
+        remote = { connected: true, uid: r.data?.data?.uid || configuredUid || null, configuredUid: configuredUid || null };
+      }
     } catch {}
   }
 

@@ -82,6 +82,11 @@ export default function BilibiliLoginModal({ cookieStatus, onClose, onLoginSucce
               : <span className="blmodal-source-val">{cookieStatus?.remote?.configured ? '无法连接' : '未配置'}</span>
             }
           </div>
+          {cookieStatus?.remote?.configured && !cookieStatus?.remote?.configuredUid && (
+            <div className="blmodal-warn">
+              ⚠️ 未配置 BILI_COOKIE_UID，禁言操作可能无权限
+            </div>
+          )}
           <div className={`blmodal-source ${isLocalAuthed ? 'active' : 'inactive'}`}>
             <span className="blmodal-source-dot" />
             <span className="blmodal-source-label">本地扫码</span>
