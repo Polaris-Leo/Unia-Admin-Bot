@@ -79,14 +79,7 @@
 }
 .dm-filter-input:focus { border-color: var(--primary); }
 
-.dm-filter-select {
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 4px 8px;
-  color: var(--text);
-  outline: none;
-}
+.dm-filter-select { padding: 4px 28px 4px 8px; }
 
 .dm-filter-clear {
   width: 24px; height: 24px;

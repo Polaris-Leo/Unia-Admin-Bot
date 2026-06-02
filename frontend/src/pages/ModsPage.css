@@ -77,11 +77,7 @@
 }
 .mods-field-input:focus { border-color: var(--primary); }
 
-.mods-field-select {
-  background: var(--bg-2); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 5px 8px;
-  color: var(--text); font-size: 12px; outline: none;
-}
+.mods-field-select { background: var(--bg-2); font-size: 12px; }
 
 .mods-create-error { font-size: 11px; color: var(--danger); }
 
@@ -217,11 +213,7 @@
   background: var(--bg-2);
 }
 .mods-invite-label { font-size: 13px; color: var(--text-2); }
-.mods-invite-select {
-  background: var(--bg-3); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: 5px 8px;
-  color: var(--text); outline: none; font-size: 12px;
-}
+.mods-invite-select { font-size: 12px; }
 .mods-invite-btn {
   padding: 5px 14px; border-radius: var(--radius-sm);
   background: var(--primary); color: #fff; font-size: 12px; font-weight: 600;
