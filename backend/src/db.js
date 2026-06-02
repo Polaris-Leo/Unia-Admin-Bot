@@ -61,6 +61,15 @@ export function initDb() {
     CREATE INDEX IF NOT EXISTS idx_user_tags_uid   ON user_tags(target_uid);
   `);
 
+  // 迁移：添加 is_superadmin 列（幂等）
+  const cols = db.prepare(`PRAGMA table_info(mods)`).all().map(c => c.name);
+  if (!cols.includes('is_superadmin')) {
+    db.exec(`ALTER TABLE mods ADD COLUMN is_superadmin INTEGER NOT NULL DEFAULT 0`);
+    // 将 id=1 的账户标记为超级管理员
+    db.prepare(`UPDATE mods SET is_superadmin = 1 WHERE id = 1`).run();
+    console.log('✅ mods 表已迁移：is_superadmin 列');
+  }
+
   ensureAdminAccount();
 }
 
@@ -76,7 +85,7 @@ async function ensureAdminAccount() {
 
   const hash = await bcrypt.hash(password, 12);
   db.prepare(
-    `INSERT INTO mods (username, password_hash, role, created_at) VALUES (?, ?, 'admin', ?)`
+    `INSERT INTO mods (username, password_hash, role, is_superadmin, created_at) VALUES (?, ?, 'admin', 1, ?)`
   ).run('admin', hash, Date.now());
 
   console.log('✅ admin 账户已创建');

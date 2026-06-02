@@ -38,6 +38,16 @@
   background: var(--bg-3); color: var(--text-2);
 }
 .mods-role-badge.admin { background: var(--primary-dim); color: var(--primary); }
+.mods-role-badge.superadmin {
+  background: rgba(250,173,20,0.15); color: var(--warning);
+  border: 1px solid rgba(250,173,20,0.3);
+}
+
+.mods-protected-label {
+  font-size: 11px; color: var(--text-3);
+  padding: 2px 8px; border-radius: 20px;
+  border: 1px solid var(--border);
+}
 
 
 .mods-toolbar {

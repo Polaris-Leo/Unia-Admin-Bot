@@ -9,7 +9,7 @@ const router = Router();
 router.get('/', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const rows = db.prepare(`
-      SELECT m.id, m.username, m.role, m.created_at, m.disabled_at,
+      SELECT m.id, m.username, m.role, m.is_superadmin, m.created_at,
              inv.username AS invited_by_name
       FROM mods m
       LEFT JOIN mods inv ON inv.id = m.invited_by
@@ -46,6 +46,8 @@ router.patch('/:modId/role', requireAuth, requireAdmin, (req, res, next) => {
     const { role } = req.body;
     if (!['admin', 'mod'].includes(role)) return res.status(400).json({ error: '角色无效' });
     if (id === req.mod.id) return res.status(400).json({ error: '不能修改自己的角色' });
+    const target = db.prepare('SELECT is_superadmin FROM mods WHERE id = ?').get(id);
+    if (target?.is_superadmin) return res.status(403).json({ error: '超级管理员账户不能降级' });
     db.prepare('UPDATE mods SET role = ? WHERE id = ?').run(role, id);
     res.json({ ok: true });
   } catch (e) { next(e); }
@@ -56,6 +58,8 @@ router.delete('/:modId', requireAuth, requireAdmin, (req, res, next) => {
   try {
     const id = Number(req.params.modId);
     if (id === req.mod.id) return res.status(400).json({ error: '不能删除自己' });
+    const target = db.prepare('SELECT is_superadmin FROM mods WHERE id = ?').get(id);
+    if (target?.is_superadmin) return res.status(403).json({ error: '超级管理员账户不能删除' });
     db.prepare('DELETE FROM invite_tokens WHERE created_by = ?').run(id);
     db.prepare('DELETE FROM mods WHERE id = ?').run(id);
     res.json({ ok: true });

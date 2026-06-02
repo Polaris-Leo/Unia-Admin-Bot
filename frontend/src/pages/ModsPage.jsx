@@ -153,25 +153,32 @@ export default function ModsPage() {
                 <tr key={mod.id}>
                   <td className="mods-username">{mod.username}</td>
                   <td>
-                    <span className={`mods-role-badge ${mod.role}`}>
-                      {mod.role === 'admin' ? '系统管理员' : '普通房管'}
+                    <span className={`mods-role-badge ${mod.is_superadmin ? 'superadmin' : mod.role}`}>
+                      {mod.is_superadmin ? '超级管理员' : mod.role === 'admin' ? '系统管理员' : '普通房管'}
                     </span>
                   </td>
                   <td className="mods-time">{formatTs(mod.created_at)}</td>
                   <td className="mods-invitedby">{mod.invited_by_name || '—'}</td>
                   <td className="mods-actions">
-                    {mod.role === 'mod' ? (
-                      <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
-                        设为管理员
-                      </button>
-                    ) : (
-                      <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
-                        设为房管
+                    {!mod.is_superadmin && (
+                      mod.role === 'mod' ? (
+                        <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
+                          设为管理员
+                        </button>
+                      ) : (
+                        <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
+                          设为房管
+                        </button>
+                      )
+                    )}
+                    {!mod.is_superadmin && (
+                      <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>
+                        删除
                       </button>
                     )}
-                    <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>
-                      删除
-                    </button>
+                    {mod.is_superadmin && (
+                      <span className="mods-protected-label">受保护</span>
+                    )}
                   </td>
                 </tr>
               ))}
