@@ -86,7 +86,8 @@ export default function DanmakuPage() {
   const connectWS = useCallback(() => {
     const token = localStorage.getItem('token');
     if (!token) return;
-    const wsUrl = `ws://${location.host}/ws/danmaku?token=${token}`;
+    const wsProto = location.protocol === 'https:' ? 'wss' : 'ws';
+    const wsUrl = `${wsProto}://${location.host}/ws/danmaku?token=${token}`;
     const ws = new WebSocket(wsUrl);
     wsRef.current = ws;
 
