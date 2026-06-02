@@ -112,19 +112,71 @@
 }
 .mods-edit-btn:hover { border-color: var(--primary); color: var(--primary); }
 
-.mods-row-editing td { padding: 6px 14px; background: var(--bg-3); }
-
-.mods-edit-form {
-  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+/* 通用弹窗 */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 4000;
+  background: rgba(0,0,0,0.5);
+  display: flex; align-items: center; justify-content: center;
 }
-.mods-edit-label { font-size: 12px; color: var(--text-2); white-space: nowrap; }
 
-.mods-cancel-btn {
-  padding: 5px 12px; border-radius: var(--radius-sm);
-  background: transparent; color: var(--text-3);
-  font-size: 12px; border: 1px solid var(--border);
+.modal-card {
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  width: 360px;
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
 }
-.mods-cancel-btn:hover { color: var(--text); }
+.modal-card-sm { width: 300px; }
+
+.modal-header {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px 16px 12px;
+  border-bottom: 1px solid var(--border);
+}
+.modal-title { font-size: 14px; font-weight: 600; }
+.modal-close { font-size: 20px; line-height: 1; color: var(--text-3); background: transparent; }
+.modal-close:hover { color: var(--text); }
+
+.modal-body { padding: 16px; display: flex; flex-direction: column; gap: 12px; }
+
+.modal-field { display: flex; flex-direction: column; gap: 5px; }
+.modal-field label { font-size: 12px; color: var(--text-2); }
+.modal-input {
+  background: var(--bg-3); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: 7px 10px;
+  color: var(--text); font-size: 13px; outline: none;
+}
+.modal-input:focus { border-color: var(--primary); }
+
+.modal-error {
+  font-size: 12px; color: var(--danger);
+  background: rgba(255,77,79,0.08);
+  border-radius: var(--radius-sm); padding: 6px 10px;
+}
+
+.modal-message { font-size: 13px; color: var(--text-2); line-height: 1.6; }
+
+.modal-footer {
+  display: flex; justify-content: flex-end; gap: 8px;
+  padding-top: 4px;
+}
+
+.modal-btn-cancel {
+  padding: 6px 16px; border-radius: var(--radius-sm);
+  background: var(--bg-3); color: var(--text-2);
+  font-size: 13px; border: 1px solid var(--border);
+}
+.modal-btn-cancel:hover { color: var(--text); }
+
+.modal-btn-confirm {
+  padding: 6px 16px; border-radius: var(--radius-sm);
+  background: var(--primary); color: #fff;
+  font-size: 13px; font-weight: 600;
+}
+.modal-btn-confirm:hover { opacity: 0.85; }
+.modal-btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; }
+.modal-btn-confirm.danger { background: var(--danger); }
+.modal-btn-confirm.danger:hover { opacity: 0.85; }
 
 .mods-disable-btn {
   padding: 2px 8px; border-radius: var(--radius-sm);

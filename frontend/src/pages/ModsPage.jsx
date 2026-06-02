@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
 import './ModsPage.css';
 
@@ -6,24 +6,118 @@ function formatTs(ms) {
   return new Date(ms).toLocaleString();
 }
 
+function EditUserModal({ mod, onClose, onSave }) {
+  const [form, setForm] = useState({ username: mod.username, password: '' });
+  const [error, setError] = useState('');
+  const [saving, setSaving] = useState(false);
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setError('');
+    const payload = {};
+    if (form.username !== mod.username) payload.username = form.username;
+    if (form.password) payload.password = form.password;
+    if (!Object.keys(payload).length) { onClose(); return; }
+    setSaving(true);
+    try {
+      await onSave(payload);
+      onClose();
+    } catch (err) {
+      setError(err.response?.data?.error || '保存失败');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card" ref={ref} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">修改用户 — {mod.username}</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <form className="modal-body" onSubmit={handleSubmit}>
+          <div className="modal-field">
+            <label>用户名</label>
+            <input
+              className="modal-input"
+              value={form.username}
+              onChange={e => setForm(f => ({ ...f, username: e.target.value }))}
+              autoFocus
+              required
+            />
+          </div>
+          <div className="modal-field">
+            <label>新密码</label>
+            <input
+              className="modal-input"
+              type="password"
+              placeholder="留空则不修改"
+              value={form.password}
+              onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
+            />
+          </div>
+          {error && <div className="modal-error">{error}</div>}
+          <div className="modal-footer">
+            <button type="button" className="modal-btn-cancel" onClick={onClose}>取消</button>
+            <button type="submit" className="modal-btn-confirm" disabled={saving}>
+              {saving ? '保存中...' : '保存'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+function ConfirmModal({ title, message, onConfirm, onClose, danger = true }) {
+  const ref = useRef(null);
+
+  useEffect(() => {
+    const handler = (e) => { if (ref.current && !ref.current.contains(e.target)) onClose(); };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [onClose]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal-card modal-card-sm" ref={ref} onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">{title}</span>
+          <button className="modal-close" onClick={onClose}>×</button>
+        </div>
+        <div className="modal-body">
+          <p className="modal-message">{message}</p>
+          <div className="modal-footer">
+            <button className="modal-btn-cancel" onClick={onClose}>取消</button>
+            <button className={`modal-btn-confirm ${danger ? 'danger' : ''}`} onClick={onConfirm}>确认</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function ModsPage() {
   const [mods, setMods] = useState([]);
   const [invites, setInvites] = useState([]);
   const [tab, setTab] = useState('users');
 
-  // 编辑用户
-  const [editingId, setEditingId] = useState(null);
-  const [editForm, setEditForm] = useState({ username: '', password: '' });
-  const [editError, setEditError] = useState('');
-  const [editing, setEditing] = useState(false);
+  const [editingMod, setEditingMod] = useState(null);
+  const [confirmState, setConfirmState] = useState(null);
 
-  // 新建用户表单
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [createForm, setCreateForm] = useState({ username: '', password: '', role: 'mod' });
   const [createError, setCreateError] = useState('');
   const [creating, setCreating] = useState(false);
 
-  // 邀请码
   const [expiresHours, setExpiresHours] = useState(24);
   const [newInvite, setNewInvite] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
@@ -57,36 +151,16 @@ export default function ModsPage() {
       await updateModRole(mod.id, newRole);
       setMods(prev => prev.map(m => m.id === mod.id ? { ...m, role: newRole } : m));
     } catch (err) {
-      alert(err.response?.data?.error || '修改失败');
+      setConfirmState({
+        title: '操作失败', message: err.response?.data?.error || '修改失败',
+        onConfirm: () => setConfirmState(null), danger: false
+      });
     }
   };
 
-  const startEdit = (mod) => {
-    setEditingId(mod.id);
-    setEditForm({ username: mod.username, password: '' });
-    setEditError('');
-  };
-
-  const cancelEdit = () => { setEditingId(null); setEditError(''); };
-
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    setEditError('');
-    setEditing(true);
-    try {
-      const payload = {};
-      const currentMod = mods.find(m => m.id === editingId);
-      if (editForm.username !== currentMod.username) payload.username = editForm.username;
-      if (editForm.password) payload.password = editForm.password;
-      if (!Object.keys(payload).length) { cancelEdit(); setEditing(false); return; }
-      const res = await updateModProfile(editingId, payload);
-      setMods(prev => prev.map(m => m.id === editingId ? { ...m, ...res.data } : m));
-      cancelEdit();
-    } catch (err) {
-      setEditError(err.response?.data?.error || '修改失败');
-    } finally {
-      setEditing(false);
-    }
+  const handleEditSave = async (payload) => {
+    const res = await updateModProfile(editingMod.id, payload);
+    setMods(prev => prev.map(m => m.id === editingMod.id ? { ...m, ...res.data } : m));
   };
 
   const handleDisable = async (mod) => {
@@ -94,7 +168,7 @@ export default function ModsPage() {
       await disableMod(mod.id);
       setMods(prev => prev.map(m => m.id === mod.id ? { ...m, disabled_at: Date.now() } : m));
     } catch (err) {
-      alert(err.response?.data?.error || '禁用失败');
+      setConfirmState({ title: '操作失败', message: err.response?.data?.error || '禁用失败', onConfirm: () => setConfirmState(null), danger: false });
     }
   };
 
@@ -103,18 +177,26 @@ export default function ModsPage() {
       await enableMod(mod.id);
       setMods(prev => prev.map(m => m.id === mod.id ? { ...m, disabled_at: null } : m));
     } catch (err) {
-      alert(err.response?.data?.error || '启用失败');
+      setConfirmState({ title: '操作失败', message: err.response?.data?.error || '启用失败', onConfirm: () => setConfirmState(null), danger: false });
     }
   };
 
-  const handleDelete = async (mod) => {
-    if (!confirm(`确定删除用户 "${mod.username}"？此操作不可撤销。`)) return;
-    try {
-      await deleteMod(mod.id);
-      setMods(prev => prev.filter(m => m.id !== mod.id));
-    } catch (err) {
-      alert(err.response?.data?.error || '删除失败');
-    }
+  const handleDelete = (mod) => {
+    setConfirmState({
+      title: '删除用户',
+      message: `确定删除用户 "${mod.username}"？此操作不可撤销，该用户的禁言记录也将一并删除。`,
+      onConfirm: async () => {
+        try {
+          await deleteMod(mod.id);
+          setMods(prev => prev.filter(m => m.id !== mod.id));
+        } catch (err) {
+          setConfirmState({ title: '删除失败', message: err.response?.data?.error || '删除失败', onConfirm: () => setConfirmState(null), danger: false });
+          return;
+        }
+        setConfirmState(null);
+      },
+      danger: true
+    });
   };
 
   const handleCreateInvite = async () => {
@@ -123,9 +205,17 @@ export default function ModsPage() {
     setInvites(prev => [res.data, ...prev]);
   };
 
-  const handleDeleteInvite = async (id) => {
-    await deleteInvite(id);
-    setInvites(prev => prev.filter(i => i.id !== id));
+  const handleDeleteInvite = (id) => {
+    setConfirmState({
+      title: '删除邀请码',
+      message: '确定删除这条邀请码？',
+      onConfirm: async () => {
+        await deleteInvite(id);
+        setInvites(prev => prev.filter(i => i.id !== id));
+        setConfirmState(null);
+      },
+      danger: true
+    });
   };
 
   const copyLink = () => {
@@ -140,12 +230,8 @@ export default function ModsPage() {
       <div className="mods-header">
         <span className="mods-title">用户管理</span>
         <div className="mods-tabs">
-          <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>
-            用户列表
-          </button>
-          <button className={tab === 'invites' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('invites')}>
-            邀请码
-          </button>
+          <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>用户列表</button>
+          <button className={tab === 'invites' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('invites')}>邀请码</button>
         </div>
       </div>
 
@@ -159,27 +245,12 @@ export default function ModsPage() {
 
           {showCreateForm && (
             <form className="mods-create-form" onSubmit={handleCreate}>
-              <input
-                className="mods-field-input"
-                placeholder="用户名"
-                value={createForm.username}
-                onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))}
-                required
-                autoFocus
-              />
-              <input
-                className="mods-field-input"
-                type="password"
-                placeholder="密码（至少 6 位）"
-                value={createForm.password}
-                onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))}
-                required
-              />
-              <select
-                className="mods-field-select"
-                value={createForm.role}
-                onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}
-              >
+              <input className="mods-field-input" placeholder="用户名" value={createForm.username}
+                onChange={e => setCreateForm(f => ({ ...f, username: e.target.value }))} required autoFocus />
+              <input className="mods-field-input" type="password" placeholder="密码（至少 6 位）" value={createForm.password}
+                onChange={e => setCreateForm(f => ({ ...f, password: e.target.value }))} required />
+              <select className="mods-field-select" value={createForm.role}
+                onChange={e => setCreateForm(f => ({ ...f, role: e.target.value }))}>
                 <option value="mod">普通房管</option>
                 <option value="admin">系统管理员</option>
               </select>
@@ -192,44 +263,10 @@ export default function ModsPage() {
 
           <table className="mods-table">
             <thead>
-              <tr>
-                <th>用户名</th>
-                <th>角色</th>
-                <th>创建时间</th>
-                <th>邀请人</th>
-                <th>操作</th>
-              </tr>
+              <tr><th>用户名</th><th>角色</th><th>创建时间</th><th>邀请人</th><th>操作</th></tr>
             </thead>
             <tbody>
               {mods.map(mod => (
-                editingId === mod.id ? (
-                  <tr key={mod.id} className="mods-row-editing">
-                    <td colSpan={5}>
-                      <form className="mods-edit-form" onSubmit={handleEditSubmit}>
-                        <span className="mods-edit-label">修改 {mod.username}</span>
-                        <input
-                          className="mods-field-input"
-                          placeholder="新用户名（留空不改）"
-                          value={editForm.username}
-                          onChange={e => setEditForm(f => ({ ...f, username: e.target.value }))}
-                          autoFocus
-                        />
-                        <input
-                          className="mods-field-input"
-                          type="password"
-                          placeholder="新密码（留空不改）"
-                          value={editForm.password}
-                          onChange={e => setEditForm(f => ({ ...f, password: e.target.value }))}
-                        />
-                        {editError && <span className="mods-create-error">{editError}</span>}
-                        <button type="submit" className="mods-create-submit" disabled={editing}>
-                          {editing ? '保存中...' : '保存'}
-                        </button>
-                        <button type="button" className="mods-cancel-btn" onClick={cancelEdit}>取消</button>
-                      </form>
-                    </td>
-                  </tr>
-                ) : (
                 <tr key={mod.id} className={mod.disabled_at ? 'mods-row-disabled' : ''}>
                   <td className="mods-username">
                     {mod.username}
@@ -243,32 +280,23 @@ export default function ModsPage() {
                   <td className="mods-time">{formatTs(mod.created_at)}</td>
                   <td className="mods-invitedby">{mod.invited_by_name || '—'}</td>
                   <td className="mods-actions">
-                    <button className="mods-edit-btn" onClick={() => startEdit(mod)}>修改</button>
+                    <button className="mods-edit-btn" onClick={() => setEditingMod(mod)}>修改</button>
                     {!mod.is_superadmin && (
                       <>
-                        {mod.role === 'mod' ? (
-                          <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>
-                            设为管理员
-                          </button>
-                        ) : (
-                          <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>
-                            设为房管
-                          </button>
-                        )}
-                        {mod.disabled_at ? (
-                          <button className="mods-enable-btn" onClick={() => handleEnable(mod)}>启用</button>
-                        ) : (
-                          <button className="mods-disable-btn" onClick={() => handleDisable(mod)}>禁用</button>
-                        )}
+                        {mod.role === 'mod'
+                          ? <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>设为管理员</button>
+                          : <button className="mods-role-btn mods-role-btn-demote" onClick={() => handleRoleChange(mod, 'mod')}>设为房管</button>
+                        }
+                        {mod.disabled_at
+                          ? <button className="mods-enable-btn" onClick={() => handleEnable(mod)}>启用</button>
+                          : <button className="mods-disable-btn" onClick={() => handleDisable(mod)}>禁用</button>
+                        }
                         <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>删除</button>
                       </>
                     )}
-                    {!!mod.is_superadmin && (
-                      <span className="mods-protected-label">受保护</span>
-                    )}
+                    {!!mod.is_superadmin && <span className="mods-protected-label">受保护</span>}
                   </td>
                 </tr>
-                )
               ))}
             </tbody>
           </table>
@@ -279,37 +307,23 @@ export default function ModsPage() {
         <div className="mods-content">
           <div className="mods-invite-create">
             <span className="mods-invite-label">生成邀请链接</span>
-            <select
-              className="mods-invite-select"
-              value={expiresHours}
-              onChange={e => setExpiresHours(Number(e.target.value))}
-            >
+            <select className="mods-invite-select" value={expiresHours}
+              onChange={e => setExpiresHours(Number(e.target.value))}>
               <option value={24}>24 小时</option>
               <option value={72}>72 小时</option>
               <option value={168}>7 天</option>
             </select>
             <button className="mods-invite-btn" onClick={handleCreateInvite}>生成</button>
           </div>
-
           {newInvite && (
             <div className="mods-invite-result">
               <span className="mods-invite-link">{newInvite.link}</span>
-              <button className="mods-copy-btn" onClick={copyLink}>
-                {linkCopied ? '✓ 已复制' : '复制'}
-              </button>
+              <button className="mods-copy-btn" onClick={copyLink}>{linkCopied ? '✓ 已复制' : '复制'}</button>
             </div>
           )}
-
           <table className="mods-table">
             <thead>
-              <tr>
-                <th>Token</th>
-                <th>创建人</th>
-                <th>有效期至</th>
-                <th>使用人</th>
-                <th>状态</th>
-                <th>操作</th>
-              </tr>
+              <tr><th>Token</th><th>创建人</th><th>有效期至</th><th>使用人</th><th>状态</th><th>操作</th></tr>
             </thead>
             <tbody>
               {invites.map(inv => {
@@ -322,17 +336,12 @@ export default function ModsPage() {
                     <td className="mods-time">{formatTs(inv.expires_at)}</td>
                     <td>{inv.used_by_name || '—'}</td>
                     <td>
-                      {used
-                        ? <span className="mods-invite-used">已使用</span>
-                        : expired
-                          ? <span className="mods-invite-expired">已过期</span>
-                          : <span className="mods-invite-valid">有效</span>
-                      }
+                      {used ? <span className="mods-invite-used">已使用</span>
+                        : expired ? <span className="mods-invite-expired">已过期</span>
+                        : <span className="mods-invite-valid">有效</span>}
                     </td>
                     <td>
-                      <button className="mods-delete-btn" onClick={() => handleDeleteInvite(inv.id)}>
-                        删除
-                      </button>
+                      <button className="mods-delete-btn" onClick={() => handleDeleteInvite(inv.id)}>删除</button>
                     </td>
                   </tr>
                 );
@@ -340,6 +349,24 @@ export default function ModsPage() {
             </tbody>
           </table>
         </div>
+      )}
+
+      {editingMod && (
+        <EditUserModal
+          mod={editingMod}
+          onClose={() => setEditingMod(null)}
+          onSave={handleEditSave}
+        />
+      )}
+
+      {confirmState && (
+        <ConfirmModal
+          title={confirmState.title}
+          message={confirmState.message}
+          danger={confirmState.danger}
+          onConfirm={confirmState.onConfirm}
+          onClose={() => setConfirmState(null)}
+        />
       )}
     </div>
   );
