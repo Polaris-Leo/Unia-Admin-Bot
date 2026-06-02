@@ -59,7 +59,7 @@ export default function BanLogPage() {
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
         />
         <input
-          className="banlog-input" placeholder="被禁用户 B站ID"
+          className="banlog-input" placeholder="被禁用户UID"
           value={filters.targetUid}
           onChange={e => setFilters(f => ({ ...f, targetUid: e.target.value }))}
           onKeyDown={e => e.key === 'Enter' && handleSearch()}
@@ -79,7 +79,7 @@ export default function BanLogPage() {
             <tr>
               <th>时间</th>
               <th>房管</th>
-              <th>被禁用户 B站ID</th>
+              <th>被禁用户UID</th>
               <th>被禁用户名</th>
               <th>触发弹幕</th>
               <th>时长</th>
