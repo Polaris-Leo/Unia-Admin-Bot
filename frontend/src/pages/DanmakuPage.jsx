@@ -218,59 +218,53 @@ export default function DanmakuPage() {
 
   return (
     <div className="dm-page">
-      {/* Top bar */}
+      {/* Top bar — 单行：主播信息左，搜索筛选右 */}
       <div className="dm-topbar">
-        <div className="dm-room-input">
-          <span className="dm-room-label">房间号</span>
-          <span className="dm-room-id">{roomId || '未配置'}</span>
+        <div className="dm-left">
+          <img
+            src={roomInfo?.anchorFace || 'https://i0.hdslb.com/bfs/face/member/noface.jpg'}
+            alt={roomInfo?.anchorName || ''}
+            className="dm-anchor-avatar"
+            referrerPolicy="no-referrer"
+            onError={e => e.target.src = 'https://i0.hdslb.com/bfs/face/member/noface.jpg'}
+          />
           <span className={`dm-status-dot ${liveStatus === 1 ? 'live' : liveStatus === 2 ? 'replay' : ''}`} />
-          {liveStatus === 1 && <span className="dm-duration">{liveDuration}</span>}
-          <button
-            className="dm-btn dm-btn-reconnect"
-            onClick={handleReconnect}
-            disabled={reconnecting}
-            title="重新连接直播间"
-          >
-            {reconnecting ? '连接中...' : '重连'}
-          </button>
-        </div>
-
-        <div className="dm-stats">
-          {roomInfo && <span className="dm-anchor">{roomInfo.anchorName}</span>}
+          {roomInfo?.anchorName && <span className="dm-anchor">{roomInfo.anchorName}</span>}
+          <div className="dm-divider-v" />
           <span className="dm-stat-item">在线 <b>{watchedCount.toLocaleString()}</b></span>
           <span className="dm-stat-item">点赞 <b>{likeCount.toLocaleString()}</b></span>
           <span className="dm-stat-item">高能 <b>{rankCount.toLocaleString()}</b></span>
-          {roomInfo && <span className="dm-stat-item">舰长 <b>{roomInfo.guardCount}</b></span>}
+          {roomInfo?.guardCount > 0 && <span className="dm-stat-item">舰长 <b>{roomInfo.guardCount}</b></span>}
+          {liveStatus === 1 && <span className="dm-stat-item">时长 <b className="dm-duration">{liveDuration}</b></span>}
         </div>
-      </div>
 
-      {/* Filter bar */}
-      <div className="dm-filterbar">
-        <input
-          className="dm-filter-input"
-          placeholder="搜索用户名 / UID / 弹幕内容"
-          value={filterText}
-          onChange={e => setFilterText(e.target.value)}
-        />
-        <select
-          className="dm-filter-select"
-          value={filterType}
-          onChange={e => setFilterType(e.target.value)}
-        >
-          <option value="all">全部</option>
-          <option value="danmaku">弹幕</option>
-          <option value="gift">礼物</option>
-          <option value="superchat">SC</option>
-          <option value="guard">上舰</option>
-        </select>
-        {(filterText || filterUid || filterType !== 'all') && (
-          <button className="dm-filter-clear" onClick={() => { setFilterText(''); setFilterUid(null); setFilterType('all'); }}>
-            清除筛选
-          </button>
-        )}
-        {filterUid && (
-          <span className="dm-filter-tag">UID: {filterUid}</span>
-        )}
+        <div className="dm-right">
+          {filterUid && (
+            <span className="dm-filter-tag">UID: {filterUid}</span>
+          )}
+          <input
+            className="dm-filter-input"
+            placeholder="搜索用户名 / UID / 弹幕内容"
+            value={filterText}
+            onChange={e => setFilterText(e.target.value)}
+          />
+          <select
+            className="dm-filter-select"
+            value={filterType}
+            onChange={e => setFilterType(e.target.value)}
+          >
+            <option value="all">全部</option>
+            <option value="danmaku">弹幕</option>
+            <option value="gift">礼物</option>
+            <option value="superchat">SC</option>
+            <option value="guard">上舰</option>
+          </select>
+          {(filterText || filterUid || filterType !== 'all') && (
+            <button className="dm-filter-clear" onClick={() => { setFilterText(''); setFilterUid(null); setFilterType('all'); }}>
+              ×
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Main area */}
