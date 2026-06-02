@@ -7,7 +7,7 @@ function formatTs(ms) {
 }
 
 function EditUserModal({ mod, onClose, onSave }) {
-  const [form, setForm] = useState({ username: mod.username, password: '' });
+  const [form, setForm] = useState({ username: mod.username, password: '', confirm: '' });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
   const ref = useRef(null);
@@ -21,6 +21,10 @@ function EditUserModal({ mod, onClose, onSave }) {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    if (form.password && form.password !== form.confirm) {
+      setError('两次密码输入不一致');
+      return;
+    }
     const payload = {};
     if (form.username !== mod.username) payload.username = form.username;
     if (form.password) payload.password = form.password;
@@ -64,6 +68,18 @@ function EditUserModal({ mod, onClose, onSave }) {
               onChange={e => setForm(f => ({ ...f, password: e.target.value }))}
             />
           </div>
+          {form.password && (
+            <div className="modal-field">
+              <label>确认新密码</label>
+              <input
+                className={`modal-input ${form.confirm && form.confirm !== form.password ? 'modal-input-error' : ''}`}
+                type="password"
+                placeholder="再次输入新密码"
+                value={form.confirm}
+                onChange={e => setForm(f => ({ ...f, confirm: e.target.value }))}
+              />
+            </div>
+          )}
           {error && <div className="modal-error">{error}</div>}
           <div className="modal-footer">
             <button type="button" className="modal-btn-cancel" onClick={onClose}>取消</button>
