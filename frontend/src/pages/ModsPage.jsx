@@ -200,7 +200,7 @@ export default function ModsPage() {
                         <button className="mods-delete-btn" onClick={() => handleDelete(mod)}>删除</button>
                       </>
                     )}
-                    {mod.is_superadmin && (
+                    {!!mod.is_superadmin && (
                       <span className="mods-protected-label">受保护</span>
                     )}
                   </td>
