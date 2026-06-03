@@ -2,7 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { getMe, updateMyProfile } from '../services/api';
 import api from '../services/api';
-import { getSavedTheme, applyTheme } from '../utils/theme.js';
+import { getCurrentTheme, toggleTheme } from '../utils/theme.js';
 import BilibiliLoginModal from './BilibiliLoginModal';
 import './NavBar.css';
 import '../pages/ModsPage.css';
@@ -102,16 +102,12 @@ export default function NavBar() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
-  const [theme, setTheme] = useState(getSavedTheme);
+  const [isDark, setIsDark] = useState(() => getCurrentTheme() === 'dark');
   const dropdownRef = useRef(null);
 
-  const THEMES = ['auto', 'dark', 'light'];
-  const THEME_LABELS = { auto: '🌐 自动', dark: '🌙 深色', light: '☀️ 浅色' };
-
   const handleTheme = () => {
-    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
-    applyTheme(next);
-    setTheme(next);
+    const next = toggleTheme();
+    setIsDark(next === 'dark');
   };
 
   const fetchCookieStatus = () =>
@@ -163,8 +159,30 @@ export default function NavBar() {
         )}
       </div>
 
-      <button className="nav-theme-btn" onClick={handleTheme} title="切换主题">
-        {THEME_LABELS[theme]}
+      <button
+        className="theme-toggle"
+        onClick={handleTheme}
+        title="切换明暗主题"
+        aria-label={isDark ? 'dark' : 'light'}
+        aria-live="polite"
+      >
+        <svg className="sun-and-moon" aria-hidden="true" width="24" height="24" viewBox="0 0 24 24">
+          <circle className="sun" cx="12" cy="12" r="6" mask="url(#moon-mask)" fill="currentColor" />
+          <g className="sun-beams" stroke="currentColor">
+            <line x1="12" y1="1" x2="12" y2="3" />
+            <line x1="12" y1="21" x2="12" y2="23" />
+            <line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+            <line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+            <line x1="1" y1="12" x2="3" y2="12" />
+            <line x1="21" y1="12" x2="23" y2="12" />
+            <line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+            <line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+          </g>
+          <mask className="moon" id="moon-mask">
+            <rect x="0" y="0" width="100%" height="100%" fill="white" />
+            <circle cx="24" cy="10" r="6" fill="black" />
+          </mask>
+        </svg>
       </button>
 
       {cookieStatus && (() => {

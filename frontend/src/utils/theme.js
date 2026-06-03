@@ -1,18 +1,22 @@
 const STORAGE_KEY = 'unia-theme';
 
-export function getSavedTheme() {
-  return localStorage.getItem(STORAGE_KEY) || 'auto';
-}
-
-export function applyTheme(theme) {
-  if (theme === 'auto') {
-    document.documentElement.removeAttribute('data-theme');
-  } else {
-    document.documentElement.setAttribute('data-theme', theme);
-  }
-  localStorage.setItem(STORAGE_KEY, theme);
+function getSystemTheme() {
+  return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
 }
 
 export function initTheme() {
-  applyTheme(getSavedTheme());
+  const saved = localStorage.getItem(STORAGE_KEY);
+  const theme = saved || getSystemTheme();
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+export function getCurrentTheme() {
+  return document.documentElement.getAttribute('data-theme') || getSystemTheme();
+}
+
+export function toggleTheme() {
+  const next = getCurrentTheme() === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem(STORAGE_KEY, next);
+  return next;
 }
