@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { BilibiliLiveWS } from '../services/bilibiliLiveWS.js';
 import { loadCookies } from '../utils/cookieStorage.js';
-import { getLastSessionId, loadRecentHistory } from '../utils/historyStorage.js';
+import { getLastSessionId, loadRecentHistory, loadSessionChunk } from '../utils/historyStorage.js';
 import { requireAuth } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -116,6 +116,19 @@ router.get('/recent', requireAuth, async (req, res, next) => {
     }
     const data = await loadRecentHistory(currentRoomId, sessionId, 100);
     res.json(data || { danmaku: [], superchat: [], gift: [] });
+  } catch (e) { next(e); }
+});
+
+router.get('/session', requireAuth, async (req, res, next) => {
+  try {
+    const offset = Math.max(0, parseInt(req.query.offset) || 0);
+    const limit  = Math.min(Math.max(1, parseInt(req.query.limit) || 300), 500);
+    const sessionId = currentWS?.currentSessionId;
+    if (!currentRoomId || !sessionId) {
+      return res.json({ danmaku: [], total: 0, superchat: [], gift: [] });
+    }
+    const data = await loadSessionChunk(currentRoomId, sessionId, offset, limit);
+    res.json(data ?? { danmaku: [], total: 0, superchat: [], gift: [] });
   } catch (e) { next(e); }
 });
 

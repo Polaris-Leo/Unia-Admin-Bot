@@ -145,9 +145,23 @@ export async function loadHistory(roomId, sessionId) {
 }
 
 /**
- * 加载当前会话最近 N 条弹幕 + 全部 SC / 礼物
+ * 加载当前会话最近 N 条弹幕 + 全部 SC / 礼物（已废弃，保留兼容）
  */
 export async function loadRecentHistory(roomId, sessionId, danmakuLimit = 100) {
+  const data = await loadSessionChunk(roomId, sessionId, 0, danmakuLimit, true);
+  if (!data) return null;
+  return { danmaku: data.danmaku, superchat: data.superchat, gift: data.gift };
+}
+
+/**
+ * 分块加载当前会话弹幕，首块同时返回 SC / 礼物
+ * @param {string|number} roomId
+ * @param {string|number} sessionId
+ * @param {number} offset  起始行号（0-based）
+ * @param {number} limit   最多返回条数
+ * @param {boolean} fromTail 为 true 时 offset 从末尾算（兼容旧逻辑）
+ */
+export async function loadSessionChunk(roomId, sessionId, offset = 0, limit = 300, fromTail = false) {
   if (!roomId || !sessionId) return null;
   const sessionDir = getSessionDir(roomId, sessionId);
   if (!fs.existsSync(sessionDir)) return null;
@@ -162,17 +176,27 @@ export async function loadRecentHistory(roomId, sessionId, danmakuLimit = 100) {
       .filter(Boolean);
   };
 
-  const [danmaku, superchat, gift] = await Promise.all([
-    readJsonl('danmaku.jsonl'),
-    readJsonl('superchat.jsonl'),
-    readJsonl('gift.jsonl'),
-  ]);
+  const danmakuAll = await readJsonl('danmaku.jsonl');
+  const total = danmakuAll.length;
 
-  return {
-    danmaku: danmaku.slice(-danmakuLimit),
-    superchat,
-    gift,
-  };
+  const realOffset = fromTail ? Math.max(0, total - limit) : offset;
+  const chunk = danmakuAll.slice(realOffset, realOffset + limit);
+
+  const result = { danmaku: chunk, total };
+
+  if (offset === 0) {
+    const [superchat, gift] = await Promise.all([
+      readJsonl('superchat.jsonl'),
+      readJsonl('gift.jsonl'),
+    ]);
+    result.superchat = superchat;
+    result.gift = gift;
+  } else {
+    result.superchat = [];
+    result.gift = [];
+  }
+
+  return result;
 }
 
 /**

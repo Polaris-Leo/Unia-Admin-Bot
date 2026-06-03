@@ -43,6 +43,9 @@ export const stopDanmaku = () =>
 export const getDanmakuRecent = () =>
   api.get('/danmaku/recent');
 
+export const getDanmakuSession = (offset = 0, limit = 300) =>
+  api.get('/danmaku/session', { params: { offset, limit } });
+
 export const silentUser = (data) =>
   api.post('/ban/silent', data);
 

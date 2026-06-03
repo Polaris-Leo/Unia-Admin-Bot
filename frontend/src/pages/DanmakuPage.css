@@ -133,6 +133,12 @@
   align-items: center;
   gap: 6px;
 }
+.dm-preload-hint {
+  font-size: 10px;
+  color: var(--text-3);
+  margin-left: auto;
+}
+
 .dm-col-count {
   background: var(--bg-3);
   border-radius: 10px;

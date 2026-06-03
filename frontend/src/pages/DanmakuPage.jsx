@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { startDanmaku, stopDanmaku, getDanmakuRecent } from '../services/api';
+import { startDanmaku, stopDanmaku, getDanmakuSession } from '../services/api';
 import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
 import CustomSelect from '../components/CustomSelect';
@@ -9,6 +9,9 @@ import './DanmakuPage.css';
 
 let globalIdCounter = 0;
 const genId = () => `m-${Date.now()}-${globalIdCounter++}`;
+
+const CHUNK = 300;   // 每次请求的弹幕条数
+const MAX_LIVE = 3000; // 直播新消息保留上限
 
 const GUARD_LABELS = { 1: '总督', 2: '提督', 3: '舰长' };
 const GUARD_COLORS = { 1: '#f0a500', 2: '#9b59b6', 3: '#3498db' };
@@ -49,6 +52,8 @@ export default function DanmakuPage() {
 
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [preloading, setPreloading] = useState(false);
+  const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
@@ -74,7 +79,10 @@ export default function DanmakuPage() {
   const addMessage = useCallback((msg) => {
     const withId = { ...msg, _id: genId() };
     if (msg.type === 'danmaku' || msg.type === 'divider') {
-      setDanmakuList(prev => [...prev.slice(-499), withId]);
+      setDanmakuList(prev => {
+        const next = [...prev, withId];
+        return next.length > MAX_LIVE ? next.slice(-MAX_LIVE) : next;
+      });
       if (!isAutoScrollRef.current) {
         setUnreadCount(c => c + 1);
       }
@@ -130,12 +138,32 @@ export default function DanmakuPage() {
       setConnected(r.data.connected);
     }).catch(() => {});
 
-    getDanmakuRecent().then(r => {
-      const { danmaku = [], superchat = [], gift = [] } = r.data;
-      if (danmaku.length)  setDanmakuList(danmaku.map(m => ({ ...m, _id: genId() })));
-      if (superchat.length) setScList(superchat.map(m => ({ ...m, _id: genId() })));
-      if (gift.length)     setGiftList(gift.map(m => ({ ...m, _id: genId() })));
-    }).catch(() => {});
+    (async () => {
+      try {
+        setPreloading(true);
+        // 首块：弹幕 + SC + 礼物
+        const r0 = await getDanmakuSession(0, CHUNK);
+        const { danmaku: c0 = [], total = 0, superchat = [], gift = [] } = r0.data;
+        setPreloadProgress({ loaded: c0.length, total });
+        if (c0.length)      setDanmakuList(c0.map(m => ({ ...m, _id: genId() })));
+        if (superchat.length) setScList(superchat.map(m => ({ ...m, _id: genId() })));
+        if (gift.length)    setGiftList(gift.map(m => ({ ...m, _id: genId() })));
+
+        // 后续块：仅弹幕
+        let offset = CHUNK;
+        while (offset < total) {
+          const r = await getDanmakuSession(offset, CHUNK);
+          const { danmaku: chunk = [] } = r.data;
+          if (chunk.length) {
+            setDanmakuList(prev => [...prev, ...chunk.map(m => ({ ...m, _id: genId() }))]);
+          }
+          offset += CHUNK;
+          setPreloadProgress({ loaded: Math.min(offset, total), total });
+          if (offset < total) await new Promise(res => setTimeout(res, 80));
+        }
+      } catch {}
+      finally { setPreloading(false); setPreloadProgress({ loaded: 0, total: 0 }); }
+    })();
 
     connectWS();
     return () => {
@@ -300,7 +328,14 @@ export default function DanmakuPage() {
       <div className="dm-main">
         {/* Danmaku list */}
         <div className="dm-col dm-col-danmaku">
-          <div className="dm-col-header">弹幕 <span className="dm-col-count">{danmakuList.length}</span></div>
+          <div className="dm-col-header">
+            弹幕 <span className="dm-col-count">{danmakuList.length}</span>
+            {preloading && preloadProgress.total > 0 && (
+              <span className="dm-preload-hint">
+                {preloadProgress.loaded}/{preloadProgress.total}
+              </span>
+            )}
+          </div>
           <div className="dm-list" ref={listRef} onScroll={handleScroll}>
             {filtered.map(msg => {
               if (msg.type === 'divider') {
