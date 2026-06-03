@@ -60,6 +60,10 @@ export default function DanmakuPage() {
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
 
+  // Settings
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('dm-font-size')) || 13);
+  const [scrollDir, setScrollDir] = useState(() => localStorage.getItem('dm-scroll-dir') || 'up');
 
   const wsRef = useRef(null);
   const listRef = useRef(null);
@@ -172,23 +176,40 @@ export default function DanmakuPage() {
     };
   }, [connectWS]);
 
-  // Auto-scroll
+  // Auto-scroll（感知方向）
+  const scrollDirRef = useRef(scrollDir);
+  useEffect(() => { scrollDirRef.current = scrollDir; }, [scrollDir]);
+
   useEffect(() => {
     if (!isAutoScrollRef.current || !listRef.current) return;
-    listRef.current.scrollTop = listRef.current.scrollHeight;
+    if (scrollDirRef.current === 'up') {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    } else {
+      listRef.current.scrollTop = 0;
+    }
   }, [danmakuList]);
 
   const handleScroll = () => {
     const el = listRef.current;
     if (!el) return;
-    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
-    isAutoScrollRef.current = atBottom;
-    setIsAutoScroll(atBottom);
-    if (atBottom) setUnreadCount(0);
+    let atEdge;
+    if (scrollDirRef.current === 'up') {
+      atEdge = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    } else {
+      atEdge = el.scrollTop < 80;
+    }
+    isAutoScrollRef.current = atEdge;
+    setIsAutoScroll(atEdge);
+    if (atEdge) setUnreadCount(0);
   };
 
-  const scrollToBottom = () => {
-    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+  const scrollToEdge = () => {
+    if (!listRef.current) return;
+    if (scrollDirRef.current === 'up') {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    } else {
+      listRef.current.scrollTop = 0;
+    }
     isAutoScrollRef.current = true;
     setIsAutoScroll(true);
     setUnreadCount(0);
@@ -223,6 +244,22 @@ export default function DanmakuPage() {
 
   const handleBanSuccess = (uid) => {
     setBannedUids(prev => new Set([...prev, uid]));
+  };
+
+  const handleFontSize = (v) => {
+    setFontSize(v);
+    localStorage.setItem('dm-font-size', v);
+  };
+
+  const handleScrollDir = (v) => {
+    setScrollDir(v);
+    localStorage.setItem('dm-scroll-dir', v);
+    // 切换方向后立即跳到对应边缘
+    setTimeout(() => {
+      if (!listRef.current) return;
+      if (v === 'up') listRef.current.scrollTop = listRef.current.scrollHeight;
+      else listRef.current.scrollTop = 0;
+    }, 0);
   };
 
   const filterDanmaku = (list) => {
@@ -271,12 +308,14 @@ export default function DanmakuPage() {
     });
   };
 
-  const filtered = filterDanmaku(danmakuList);
+  const filteredBase = filterDanmaku(danmakuList);
+  const filtered = scrollDir === 'down' ? [...filteredBase].reverse() : filteredBase;
 
   return (
     <div className="dm-page">
-      {/* Top bar — 单行：主播信息左，搜索筛选右 */}
+      {/* Top bar */}
       <div className="dm-topbar">
+        {/* 左：主播信息 */}
         <div className="dm-left">
           <img
             src={roomInfo?.anchorFace || 'https://i0.hdslb.com/bfs/face/member/noface.jpg'}
@@ -295,7 +334,8 @@ export default function DanmakuPage() {
           {liveStatus === 1 && <span className="dm-stat-item">时长 <b className="dm-duration">{liveDuration}</b></span>}
         </div>
 
-        <div className="dm-right">
+        {/* 中：搜索筛选 */}
+        <div className="dm-center">
           {filterUid && (
             <span className="dm-filter-tag">UID: {filterUid}</span>
           )}
@@ -322,6 +362,20 @@ export default function DanmakuPage() {
             </button>
           )}
         </div>
+
+        {/* 右：设置按钮 */}
+        <div className="dm-right">
+          <button
+            className={`dm-settings-btn${settingsOpen ? ' active' : ''}`}
+            onClick={() => setSettingsOpen(v => !v)}
+            title="显示设置"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+            </svg>
+          </button>
+        </div>
       </div>
 
       {/* Main area */}
@@ -336,7 +390,8 @@ export default function DanmakuPage() {
               </span>
             )}
           </div>
-          <div className="dm-list" ref={listRef} onScroll={handleScroll}>
+          <div className="dm-list" ref={listRef} onScroll={handleScroll}
+            style={{ fontSize: `${fontSize}px` }}>
             {filtered.map(msg => {
               if (msg.type === 'divider') {
                 return (
@@ -373,8 +428,8 @@ export default function DanmakuPage() {
             })}
           </div>
           {!isAutoScroll && unreadCount > 0 && (
-            <button className="dm-new-msg-btn" onClick={scrollToBottom}>
-              ↓ {unreadCount} 条新消息
+            <button className="dm-new-msg-btn" onClick={scrollToEdge}>
+              {scrollDir === 'up' ? '↓' : '↑'} {unreadCount} 条新消息
             </button>
           )}
         </div>
@@ -410,6 +465,51 @@ export default function DanmakuPage() {
           </div>
         </div>
       </div>
+
+      {/* Settings panel */}
+      <div className={`dm-settings-panel${settingsOpen ? ' open' : ''}`}>
+        <div className="dm-settings-header">
+          <span>显示设置</span>
+          <button className="dm-settings-close" onClick={() => setSettingsOpen(false)}>×</button>
+        </div>
+
+        <div className="dm-settings-body">
+          <div className="dm-settings-group">
+            <div className="dm-settings-label">
+              弹幕字号
+              <span className="dm-settings-value">{fontSize}px</span>
+            </div>
+            <input
+              type="range" min="11" max="20" step="1"
+              value={fontSize}
+              onChange={e => handleFontSize(Number(e.target.value))}
+              className="dm-settings-slider"
+            />
+            <div className="dm-settings-range-hint"><span>小</span><span>大</span></div>
+          </div>
+
+          <div className="dm-settings-group">
+            <div className="dm-settings-label">新弹幕方向</div>
+            <div className="dm-settings-radio-group">
+              <label className={`dm-settings-radio${scrollDir === 'up' ? ' active' : ''}`}>
+                <input type="radio" name="scrollDir" value="up"
+                  checked={scrollDir === 'up'}
+                  onChange={() => handleScrollDir('up')} />
+                <span>↑ 向上滚动</span>
+                <span className="dm-settings-radio-hint">新弹幕在底部</span>
+              </label>
+              <label className={`dm-settings-radio${scrollDir === 'down' ? ' active' : ''}`}>
+                <input type="radio" name="scrollDir" value="down"
+                  checked={scrollDir === 'down'}
+                  onChange={() => handleScrollDir('down')} />
+                <span>↓ 向下滚动</span>
+                <span className="dm-settings-radio-hint">新弹幕在顶部</span>
+              </label>
+            </div>
+          </div>
+        </div>
+      </div>
+      {settingsOpen && <div className="dm-settings-mask" onClick={() => setSettingsOpen(false)} />}
 
       {selectedUser && (
         <UserActionPopup
