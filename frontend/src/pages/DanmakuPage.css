@@ -384,13 +384,6 @@
   cursor: pointer;
 }
 
-.dm-settings-range-hint {
-  display: flex;
-  justify-content: space-between;
-  font-size: 10px;
-  color: var(--text-3);
-  margin-top: -2px;
-}
 
 .dm-settings-radio-group {
   display: flex;

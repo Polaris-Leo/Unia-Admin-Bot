@@ -477,19 +477,14 @@ export default function DanmakuPage() {
           <div className="dm-settings-group">
             <div className="dm-settings-label">
               弹幕字号
-              <span className="dm-settings-value">{fontSize}px</span>
+              <span className="dm-settings-value">{(fontSize - 15) / 2 > 0 ? '+' : ''}{(fontSize - 15) / 2}</span>
             </div>
             <input
               type="range" min="-5" max="5" step="1"
               value={(fontSize - 15) / 2}
               onChange={e => handleFontSize(15 + Number(e.target.value) * 2)}
               className="dm-settings-slider"
-              list="dm-font-ticks"
             />
-            <datalist id="dm-font-ticks">
-              {[-5,-4,-3,-2,-1,0,1,2,3,4,5].map(v => <option key={v} value={v} />)}
-            </datalist>
-            <div className="dm-settings-range-hint"><span>小</span><span>默认</span><span>大</span></div>
           </div>
 
           <div className="dm-settings-group">
