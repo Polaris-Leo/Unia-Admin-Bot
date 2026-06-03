@@ -219,7 +219,6 @@
 }
 
 .dm-content {
-  font-size: 13px;
   color: var(--text);
   word-break: break-all;
   flex: 1;
