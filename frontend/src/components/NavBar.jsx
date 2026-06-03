@@ -2,6 +2,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { getMe, updateMyProfile } from '../services/api';
 import api from '../services/api';
+import { getSavedTheme, applyTheme } from '../utils/theme.js';
 import BilibiliLoginModal from './BilibiliLoginModal';
 import './NavBar.css';
 import '../pages/ModsPage.css';
@@ -101,7 +102,13 @@ export default function NavBar() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
+  const [theme, setTheme] = useState(getSavedTheme);
   const dropdownRef = useRef(null);
+
+  const handleTheme = (t) => {
+    applyTheme(t);
+    setTheme(t);
+  };
 
   const fetchCookieStatus = () =>
     api.get('/cookie-status').then(r => setCookieStatus(r.data)).catch(() => {});
@@ -150,6 +157,22 @@ export default function NavBar() {
         {me?.role === 'admin' && (
           <NavLink to="/mods" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>用户管理</NavLink>
         )}
+      </div>
+
+      <div className="nav-theme-toggle">
+        {[
+          { value: 'dark',  label: '暗' },
+          { value: 'light', label: '亮' },
+          { value: 'auto',  label: '自动' },
+        ].map(({ value, label }) => (
+          <button
+            key={value}
+            className={`nav-theme-btn${theme === value ? ' active' : ''}`}
+            onClick={() => handleTheme(value)}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {cookieStatus && (() => {
