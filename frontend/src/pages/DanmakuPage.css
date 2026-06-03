@@ -94,16 +94,6 @@
 }
 .dm-filter-clear:hover { color: var(--danger); border-color: var(--danger); }
 
-.dm-history-btn {
-  padding: 4px 10px;
-  border-radius: var(--radius-sm);
-  background: var(--bg-3);
-  border: 1px solid var(--border);
-  color: var(--text-2);
-  font-size: 12px;
-  flex-shrink: 0;
-}
-.dm-history-btn:hover { color: var(--primary); border-color: var(--primary); }
 
 .dm-filter-tag {
   padding: 2px 8px;
@@ -219,10 +209,13 @@
   flex: 1;
 }
 .dm-emote {
-  width: 40px;
-  height: 40px;
+  height: 1lh;
+  width: auto;
   vertical-align: middle;
-  object-fit: contain;
+}
+.dm-emote-big {
+  height: 2lh;
+  vertical-align: middle;
 }
 
 .dm-divider {

@@ -69,4 +69,35 @@ router.get('/me', requireAuth, (req, res) => {
   res.json(mod);
 });
 
+router.patch('/me', requireAuth, async (req, res, next) => {
+  try {
+    const { username, password } = req.body;
+    const updates = [];
+    const params = [];
+
+    if (username !== undefined) {
+      if (!username.trim()) return res.status(400).json({ error: '用户名不能为空' });
+      const exists = db.prepare('SELECT id FROM mods WHERE username = ? AND id != ?').get(username.trim(), req.mod.id);
+      if (exists) return res.status(400).json({ error: '用户名已被使用' });
+      updates.push('username = ?');
+      params.push(username.trim());
+    }
+
+    if (password !== undefined) {
+      if (password.length < 6) return res.status(400).json({ error: '密码至少 6 位' });
+      const hash = await bcrypt.hash(password, 12);
+      updates.push('password_hash = ?');
+      params.push(hash);
+    }
+
+    if (updates.length === 0) return res.status(400).json({ error: '没有需要修改的内容' });
+
+    params.push(req.mod.id);
+    db.prepare(`UPDATE mods SET ${updates.join(', ')} WHERE id = ?`).run(...params);
+
+    const updated = db.prepare('SELECT id, username, role, created_at FROM mods WHERE id = ?').get(req.mod.id);
+    res.json(updated);
+  } catch (e) { next(e); }
+});
+
 export default router;

@@ -360,9 +360,6 @@ export default function ModsPage() {
                     <button className="mods-edit-btn" onClick={() => setEditingMod(mod)}>修改</button>
                     {!mod.is_superadmin && (
                       <>
-                        {mod.role === 'mod' && (
-                          <button className="mods-role-btn" onClick={() => handleRoleChange(mod, 'admin')}>设为管理员</button>
-                        )}
                         {mod.disabled_at
                           ? <button className="mods-enable-btn" onClick={() => handleEnable(mod)}>启用</button>
                           : <button className="mods-disable-btn" onClick={() => handleDisable(mod)}>禁用</button>

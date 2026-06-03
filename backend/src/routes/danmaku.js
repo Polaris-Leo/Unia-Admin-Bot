@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { WebSocketServer } from 'ws';
 import { BilibiliLiveWS } from '../services/bilibiliLiveWS.js';
 import { loadCookies } from '../utils/cookieStorage.js';
-import { getLastSessionId } from '../utils/historyStorage.js';
+import { getLastSessionId, loadRecentHistory } from '../utils/historyStorage.js';
 import { requireAuth } from '../middleware/auth.js';
 import jwt from 'jsonwebtoken';
 
@@ -106,6 +106,17 @@ router.post('/stop', requireAuth, (req, res) => {
   cachedRoomInfo = null;
   cachedLiveStatus = null;
   res.json({ ok: true });
+});
+
+router.get('/recent', requireAuth, async (req, res, next) => {
+  try {
+    const sessionId = currentWS?.currentSessionId;
+    if (!currentRoomId || !sessionId) {
+      return res.json({ danmaku: [], superchat: [], gift: [] });
+    }
+    const data = await loadRecentHistory(currentRoomId, sessionId, 100);
+    res.json(data || { danmaku: [], superchat: [], gift: [] });
+  } catch (e) { next(e); }
 });
 
 router.get('/rooms', requireAuth, (req, res) => {

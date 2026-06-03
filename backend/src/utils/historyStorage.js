@@ -145,6 +145,37 @@ export async function loadHistory(roomId, sessionId) {
 }
 
 /**
+ * 加载当前会话最近 N 条弹幕 + 全部 SC / 礼物
+ */
+export async function loadRecentHistory(roomId, sessionId, danmakuLimit = 100) {
+  if (!roomId || !sessionId) return null;
+  const sessionDir = getSessionDir(roomId, sessionId);
+  if (!fs.existsSync(sessionDir)) return null;
+
+  const readJsonl = async (filename) => {
+    const fp = path.join(sessionDir, filename);
+    if (!fs.existsSync(fp)) return [];
+    const content = await fs.promises.readFile(fp, 'utf-8');
+    return content.split('\n')
+      .filter(l => l.trim())
+      .map(l => { try { return JSON.parse(l); } catch { return null; } })
+      .filter(Boolean);
+  };
+
+  const [danmaku, superchat, gift] = await Promise.all([
+    readJsonl('danmaku.jsonl'),
+    readJsonl('superchat.jsonl'),
+    readJsonl('gift.jsonl'),
+  ]);
+
+  return {
+    danmaku: danmaku.slice(-danmakuLimit),
+    superchat,
+    gift,
+  };
+}
+
+/**
  * 获取最新的会话ID
  */
 export async function getLastSessionId(roomId) {

@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { startDanmaku, stopDanmaku } from '../services/api';
+import { useNavigate } from 'react-router-dom';
+import { startDanmaku, stopDanmaku, getDanmakuRecent } from '../services/api';
 import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
-import HistoryDrawer from '../components/HistoryDrawer';
+import { isSmallEmote } from '../utils/emoteUtils';
 import './DanmakuPage.css';
 
 let globalIdCounter = 0;
@@ -25,6 +26,7 @@ function formatDuration(secs) {
 }
 
 export default function DanmakuPage() {
+  const navigate = useNavigate();
   const [roomId, setRoomId] = useState('');
   const [connected, setConnected] = useState(false);
   const [reconnecting, setReconnecting] = useState(false);
@@ -52,7 +54,6 @@ export default function DanmakuPage() {
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
 
-  const [historyDrawer, setHistoryDrawer] = useState({ open: false, uid: null });
 
   const wsRef = useRef(null);
   const listRef = useRef(null);
@@ -123,11 +124,18 @@ export default function DanmakuPage() {
   }, [addMessage]);
 
   useEffect(() => {
-    // 读取后端配置的房间号和连接状态
     api.get('/danmaku/rooms').then(r => {
       if (r.data.configured) setRoomId(r.data.configured);
       setConnected(r.data.connected);
     }).catch(() => {});
+
+    getDanmakuRecent().then(r => {
+      const { danmaku = [], superchat = [], gift = [] } = r.data;
+      if (danmaku.length)  setDanmakuList(danmaku.map(m => ({ ...m, _id: genId() })));
+      if (superchat.length) setScList(superchat.map(m => ({ ...m, _id: genId() })));
+      if (gift.length)     setGiftList(gift.map(m => ({ ...m, _id: genId() })));
+    }).catch(() => {});
+
     connectWS();
     return () => {
       clearTimeout(reconnectRef.current);
@@ -226,7 +234,8 @@ export default function DanmakuPage() {
       if (emot) {
         return (
           <img key={i} src={emot.url} alt={part} title={part}
-            className="dm-emote" referrerPolicy="no-referrer" />
+            className={isSmallEmote(emot.url) ? 'dm-emote' : 'dm-emote dm-emote-big'}
+            referrerPolicy="no-referrer" />
         );
       }
       return <span key={i}>{highlight(part)}</span>;
@@ -285,9 +294,6 @@ export default function DanmakuPage() {
               ×
             </button>
           )}
-          <button className="dm-history-btn" onClick={() => setHistoryDrawer({ open: true, uid: null })}>
-            历史
-          </button>
         </div>
       </div>
 
@@ -380,17 +386,10 @@ export default function DanmakuPage() {
           onClose={() => setSelectedUser(null)}
           onBanSuccess={handleBanSuccess}
           onFilterUser={(uid) => { setFilterUid(uid); setSelectedUser(null); }}
-          onViewHistory={(uid) => { setHistoryDrawer({ open: true, uid }); setSelectedUser(null); }}
+          onViewHistory={(uid) => { navigate('/history', { state: { uid } }); setSelectedUser(null); }}
         />
       )}
 
-      {historyDrawer.open && (
-        <HistoryDrawer
-          initUid={historyDrawer.uid}
-          roomId={roomId}
-          onClose={() => setHistoryDrawer({ open: false, uid: null })}
-        />
-      )}
     </div>
   );
 }

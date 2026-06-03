@@ -4,6 +4,7 @@ import RegisterPage from './pages/RegisterPage';
 import DanmakuPage from './pages/DanmakuPage';
 import BanLogPage from './pages/BanLogPage';
 import ModsPage from './pages/ModsPage';
+import HistoryPage from './pages/HistoryPage';
 import NavBar from './components/NavBar';
 import './App.css';
 
@@ -26,6 +27,7 @@ function App() {
               <div className="app-content">
                 <Routes>
                   <Route path="/" element={<DanmakuPage />} />
+                  <Route path="/history" element={<HistoryPage />} />
                   <Route path="/ban-logs" element={<BanLogPage />} />
                   <Route path="/mods" element={<ModsPage />} />
                   <Route path="*" element={<Navigate to="/" replace />} />

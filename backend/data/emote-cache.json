@@ -8,5 +8,133 @@
     "height": 20,
     "url": "https://i0.hdslb.com/bfs/live/4e029593562283f00d39b99e0557878c4199c71d.png",
     "width": 20
+  },
+  "[啊]": {
+    "url": "https://i0.hdslb.com/bfs/live/cbf2746062242e77bdcb9eb08edbf9b151fe0c2e.png",
+    "width": 200,
+    "height": 60,
+    "emoticon_unique": "official_331",
+    "big": true
+  },
+  "[dog]": {
+    "count": 1,
+    "descript": "[dog]",
+    "emoji": "[dog]",
+    "emoticon_id": 208,
+    "emoticon_unique": "emoji_208",
+    "height": 20,
+    "url": "https://i0.hdslb.com/bfs/live/4428c84e694fbf4e0ef6c06e958d9352c3582740.png",
+    "width": 20
+  },
+  "[哼哼啊啊]": {
+    "url": "https://i0.hdslb.com/bfs/live/fe26d75b026a8b0e6c60cdc3a8f480152ea96218.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_10214",
+    "big": true
+  },
+  "[濑了濑了]": {
+    "url": "https://i0.hdslb.com/bfs/live/58c7b54993cbb50512c192b765de8b6a4603147f.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_375",
+    "big": true
+  },
+  "[你有问题]": {
+    "url": "https://i0.hdslb.com/bfs/live/9cee85024132ea14632f2abde1d4480715ee1952.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_1025",
+    "big": true
+  },
+  "[嬉皮笑脸]": {
+    "url": "https://i0.hdslb.com/bfs/live/9af494d78d6aea6f01d351264584907adb6d682a.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_10215",
+    "big": true
+  },
+  "[嘤嘤嘤]": {
+    "url": "https://i0.hdslb.com/bfs/live/37abb59c05ec6e4ce7f3b2314a2a7ea2ec7dc815.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_10220",
+    "big": true
+  },
+  "[哦吼]": {
+    "url": "https://i0.hdslb.com/bfs/live/c4d3ae5f6de247f05ceec47a734931b97cdf2f2a.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_10217",
+    "big": false
+  },
+  "[U脑过载]": {
+    "url": "https://i0.hdslb.com/bfs/live/6528ebcab366a09c92c4c6bf2a16af1a088a9578.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_10219",
+    "big": false
+  },
+  "[干活]": {
+    "url": "https://i0.hdslb.com/bfs/live/00f9b1d04cc5620475b1052049569c391d19a2d0.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_110735",
+    "big": false
+  },
+  "[刷我的卡]": {
+    "url": "https://i0.hdslb.com/bfs/live/a94a9c62ac4f8a2a68e0222eea929c602c064c43.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_110739",
+    "big": false
+  },
+  "[乖巧]": {
+    "url": "https://i0.hdslb.com/bfs/live/7c9b935b3edee4467bcdcdece133372d2adc9ae3.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_110736",
+    "big": true
+  },
+  "[委屈]": {
+    "count": 1,
+    "descript": "[委屈]",
+    "emoji": "[委屈]",
+    "emoticon_id": 215,
+    "emoticon_unique": "emoji_215",
+    "height": 20,
+    "url": "https://i0.hdslb.com/bfs/live/69312e99a00d1db2de34ef2db9220c5686643a3f.png",
+    "width": 20
+  },
+  "[傲娇]": {
+    "count": 1,
+    "descript": "[傲娇]",
+    "emoji": "[傲娇]",
+    "emoticon_id": 227,
+    "emoticon_unique": "emoji_227",
+    "height": 20,
+    "url": "https://i0.hdslb.com/bfs/live/b5b44f099059a1bafb2c2722cfe9a6f62c1dc531.png",
+    "width": 20
+  },
+  "[bksw]": {
+    "url": "https://i0.hdslb.com/bfs/live/1c877d5220b389b0596ebacf6121d23a3ce3c12c.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_110738",
+    "big": true
+  },
+  "[震撼美味]": {
+    "url": "https://i0.hdslb.com/bfs/live/cd8a5c58bea45dce52f07a38f1849b92ba64a761.png",
+    "width": 162,
+    "height": 162,
+    "emoticon_unique": "room_21514463_110737",
+    "big": true
+  },
+  "[[UPOWER_353361863_早uu]]": {
+    "url": "https://i0.hdslb.com/bfs/garb/4bacc6c2adb2e6916eaaf7479048d179973bd2d9.png",
+    "width": 20,
+    "height": 20,
+    "emoticon_unique": "upower_[UPOWER_353361863_早uu]",
+    "big": true
   }
 }

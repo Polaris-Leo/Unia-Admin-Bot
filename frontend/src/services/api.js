@@ -29,6 +29,8 @@ export const register = (token, username, password) =>
 
 export const getMe = () => api.get('/auth/me');
 
+export const updateMyProfile = (data) => api.patch('/auth/me', data);
+
 export const createInvite = (expiresHours) =>
   api.post('/auth/invite', { expiresHours });
 
@@ -37,6 +39,9 @@ export const startDanmaku = () =>
 
 export const stopDanmaku = () =>
   api.post('/danmaku/stop');
+
+export const getDanmakuRecent = () =>
+  api.get('/danmaku/recent');
 
 export const silentUser = (data) =>
   api.post('/ban/silent', data);

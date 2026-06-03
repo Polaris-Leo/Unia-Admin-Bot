@@ -62,10 +62,14 @@ Unia-Admin-Bot/
     └── src/
         ├── pages/
         │   ├── DanmakuPage.jsx    # 弹幕控制台（主界面）
+        │   ├── HistoryPage.jsx    # 历史记录（独立页）
         │   ├── BanLogPage.jsx     # 禁言日志
         │   └── ModsPage.jsx       # 房管管理（admin 专属）
         ├── components/
+        │   ├── NavBar.jsx         # 导航栏（含用户下拉菜单）
         │   └── UserActionPopup.jsx
+        ├── utils/
+        │   └── emoteUtils.js      # 表情大小白名单判断
         └── services/
             └── api.js
 ```
@@ -159,18 +163,21 @@ CREATE TABLE user_tags (
 
 | 方法 | 路径 | 说明 | 权限 |
 |------|------|------|------|
-| POST | `/login` | 用户名+密码 → JWT | 公开 |
-| POST | `/register` | token+用户名+密码 → 创建账户，邀请码失效 | 公开 |
-| POST | `/invite` | 生成邀请码，返回注册链接 | admin |
-| GET  | `/me` | 当前登录用户信息 | 已登录 |
+| POST  | `/login`    | 用户名+密码 → JWT | 公开 |
+| POST  | `/register` | token+用户名+密码 → 创建账户，邀请码失效 | 公开 |
+| POST  | `/invite`   | 生成邀请码，返回注册链接 | admin |
+| GET   | `/me`       | 当前登录用户信息 | 已登录 |
+| PATCH | `/me`       | 修改自身用户名/密码 | 已登录 |
 
 ### 弹幕 `/api/danmaku`
 
 | 方法 | 路径 | 说明 |
 |------|------|------|
-| POST | `/start` | 连接指定直播间 |
-| POST | `/stop` | 断开连接 |
-| WS   | `/ws/danmaku` | 实时消息推送 |
+| POST | `/start`       | 连接指定直播间 |
+| POST | `/stop`        | 断开连接 |
+| GET  | `/rooms`       | 当前连接状态 |
+| GET  | `/recent`      | 当前场次最近 100 条弹幕 + 全部 SC/礼物（页面初始加载用）|
+| WS   | `/ws/danmaku`  | 实时消息推送 |
 
 ### 禁言 `/api/ban`
 
@@ -237,9 +244,9 @@ CREATE TABLE user_tags (
 
 点击禁言时长 → 调 API → Toast 通知 → 弹幕行标红。
 
-### 历史/搜索面板
+### HistoryPage（`/history`）
 
-侧滑抽屉，支持房间选择 + 场次日期范围 + 关键词，结果按时间排序。
+独立历史记录页。左侧 220px 场次列表 + 跨场次搜索框；右侧与 DanmakuPage 完全相同的三列布局（弹幕/SC/礼物），支持内容/用户名/UID 过滤。点击用户名可触发 UserActionPopup，"查看历史弹幕"按钮可按 UID 自动触发搜索。
 
 ### BanLogPage
 
