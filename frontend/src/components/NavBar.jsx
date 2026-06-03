@@ -105,9 +105,13 @@ export default function NavBar() {
   const [theme, setTheme] = useState(getSavedTheme);
   const dropdownRef = useRef(null);
 
-  const handleTheme = (t) => {
-    applyTheme(t);
-    setTheme(t);
+  const THEMES = ['auto', 'dark', 'light'];
+  const THEME_LABELS = { auto: '🌐 自动', dark: '🌙 深色', light: '☀️ 浅色' };
+
+  const handleTheme = () => {
+    const next = THEMES[(THEMES.indexOf(theme) + 1) % THEMES.length];
+    applyTheme(next);
+    setTheme(next);
   };
 
   const fetchCookieStatus = () =>
@@ -159,21 +163,9 @@ export default function NavBar() {
         )}
       </div>
 
-      <div className="nav-theme-toggle">
-        {[
-          { value: 'dark',  label: '暗' },
-          { value: 'light', label: '亮' },
-          { value: 'auto',  label: '自动' },
-        ].map(({ value, label }) => (
-          <button
-            key={value}
-            className={`nav-theme-btn${theme === value ? ' active' : ''}`}
-            onClick={() => handleTheme(value)}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
+      <button className="nav-theme-btn" onClick={handleTheme} title="切换主题">
+        {THEME_LABELS[theme]}
+      </button>
 
       {cookieStatus && (() => {
         const src = cookieStatus.activeSource;
