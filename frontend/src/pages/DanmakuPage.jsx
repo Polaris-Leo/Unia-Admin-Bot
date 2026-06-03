@@ -480,7 +480,7 @@ export default function DanmakuPage() {
               <span className="dm-settings-value">{fontSize}px</span>
             </div>
             <input
-              type="range" min="10" max="50" step="1"
+              type="range" min="10" max="25" step="1"
               value={fontSize}
               onChange={e => handleFontSize(Number(e.target.value))}
               className="dm-settings-slider"
