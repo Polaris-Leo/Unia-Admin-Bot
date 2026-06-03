@@ -461,7 +461,7 @@ export default function HistoryPage() {
           {/* Export button */}
           {canExport && (
             <button className="hf-btn-export" onClick={handleExport}>
-              ↓ 导出 Excel
+              导出 Excel
             </button>
           )}
 
