@@ -371,14 +371,14 @@ export default function ModsPage() {
       <div className="mods-header">
         <span className="mods-title">用户管理</span>
         <div className="mods-tabs">
-          {isSuperAdmin && (
+          {!!isSuperAdmin && (
             <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>用户列表</button>
           )}
           <button className={tab === 'invites' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('invites')}>邀请码</button>
         </div>
       </div>
 
-      {tab === 'users' && isSuperAdmin && (
+      {tab === 'users' && !!isSuperAdmin && (
         <div className="mods-content">
           <div className="mods-toolbar">
             <button className="mods-create-btn" onClick={() => setShowCreateModal(true)}>

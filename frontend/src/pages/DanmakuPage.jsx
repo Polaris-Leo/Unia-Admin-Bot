@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startDanmaku, stopDanmaku, getDanmakuSession } from '../services/api';
 import api from '../services/api';
@@ -10,7 +10,7 @@ import './DanmakuPage.css';
 let globalIdCounter = 0;
 const genId = () => `m-${Date.now()}-${globalIdCounter++}`;
 
-const CHUNK = 300;   // 每次请求的弹幕条数
+const PAGE = 100;    // 每次加载的弹幕条数
 const MAX_LIVE = 3000; // 直播新消息保留上限
 
 const GUARD_LABELS = { 1: '总督', 2: '提督', 3: '舰长' };
@@ -52,8 +52,8 @@ export default function DanmakuPage() {
 
   const [isAutoScroll, setIsAutoScroll] = useState(true);
   const [unreadCount, setUnreadCount] = useState(0);
-  const [preloading, setPreloading] = useState(false);
-  const [preloadProgress, setPreloadProgress] = useState({ loaded: 0, total: 0 });
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasMore, setHasMore] = useState(false);
 
   const [selectedUser, setSelectedUser] = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
@@ -70,6 +70,12 @@ export default function DanmakuPage() {
   const isAutoScrollRef = useRef(true);
   const reconnectRef = useRef(null);
   const reconnectCount = useRef(0);
+
+  const loadedStartOffsetRef = useRef(0);
+  const loadingOlderRef = useRef(false);
+  const hasMoreRef = useRef(false);
+  const adjustScrollRef = useRef(false);
+  const prevScrollHeightRef = useRef(0);
 
   // Live duration timer
   useEffect(() => {
@@ -136,6 +142,47 @@ export default function DanmakuPage() {
     ws.onerror = () => {};
   }, [addMessage]);
 
+  // 预插入旧消息后，保持滚动位置不跳动
+  useLayoutEffect(() => {
+    if (!adjustScrollRef.current || !listRef.current) return;
+    adjustScrollRef.current = false;
+    listRef.current.scrollTop += listRef.current.scrollHeight - prevScrollHeightRef.current;
+  }, [danmakuList]);
+
+  const loadOlderItems = useCallback(async () => {
+    if (loadingOlderRef.current || !hasMoreRef.current) return;
+    const currentStart = loadedStartOffsetRef.current;
+    if (currentStart <= 0) return;
+
+    loadingOlderRef.current = true;
+    setLoadingOlder(true);
+
+    const newStart = Math.max(0, currentStart - PAGE);
+    const count = currentStart - newStart;
+
+    try {
+      const r = await getDanmakuSession(newStart, count);
+      const { danmaku: older = [] } = r.data;
+      if (older.length) {
+        const el = listRef.current;
+        prevScrollHeightRef.current = el ? el.scrollHeight : 0;
+        adjustScrollRef.current = true;
+        setDanmakuList(prev => [
+          ...older.map(m => ({ ...m, _id: genId() })),
+          ...prev,
+        ]);
+      }
+      loadedStartOffsetRef.current = newStart;
+      const more = newStart > 0;
+      setHasMore(more);
+      hasMoreRef.current = more;
+    } catch {}
+    finally {
+      loadingOlderRef.current = false;
+      setLoadingOlder(false);
+    }
+  }, []);
+
   useEffect(() => {
     api.get('/danmaku/rooms').then(r => {
       if (r.data.configured) setRoomId(r.data.configured);
@@ -144,29 +191,27 @@ export default function DanmakuPage() {
 
     (async () => {
       try {
-        setPreloading(true);
-        // 首块：弹幕 + SC + 礼物
-        const r0 = await getDanmakuSession(0, CHUNK);
+        // 第一次请求：获取 total + SC + 礼物，以及前 PAGE 条弹幕
+        const r0 = await getDanmakuSession(0, PAGE);
         const { danmaku: c0 = [], total = 0, superchat = [], gift = [] } = r0.data;
-        setPreloadProgress({ loaded: c0.length, total });
-        if (c0.length)      setDanmakuList(c0.map(m => ({ ...m, _id: genId() })));
         if (superchat.length) setScList(superchat.map(m => ({ ...m, _id: genId() })));
-        if (gift.length)    setGiftList(gift.map(m => ({ ...m, _id: genId() })));
+        if (gift.length) setGiftList(gift.map(m => ({ ...m, _id: genId() })));
 
-        // 后续块：仅弹幕
-        let offset = CHUNK;
-        while (offset < total) {
-          const r = await getDanmakuSession(offset, CHUNK);
-          const { danmaku: chunk = [] } = r.data;
-          if (chunk.length) {
-            setDanmakuList(prev => [...prev, ...chunk.map(m => ({ ...m, _id: genId() }))]);
-          }
-          offset += CHUNK;
-          setPreloadProgress({ loaded: Math.min(offset, total), total });
-          if (offset < total) await new Promise(res => setTimeout(res, 80));
+        if (total <= PAGE) {
+          // 全部数据已在首次请求中
+          setDanmakuList(c0.map(m => ({ ...m, _id: genId() })));
+          loadedStartOffsetRef.current = 0;
+        } else {
+          // 只加载最新的 PAGE 条
+          const startOffset = total - PAGE;
+          const r1 = await getDanmakuSession(startOffset, PAGE);
+          const { danmaku: last = [] } = r1.data;
+          setDanmakuList(last.map(m => ({ ...m, _id: genId() })));
+          loadedStartOffsetRef.current = startOffset;
+          setHasMore(true);
+          hasMoreRef.current = true;
         }
       } catch {}
-      finally { setPreloading(false); setPreloadProgress({ loaded: 0, total: 0 }); }
     })();
 
     connectWS();
@@ -192,15 +237,18 @@ export default function DanmakuPage() {
   const handleScroll = () => {
     const el = listRef.current;
     if (!el) return;
-    let atEdge;
+    let atEdge, nearOldEnd;
     if (scrollDirRef.current === 'up') {
       atEdge = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+      nearOldEnd = el.scrollTop < 120;
     } else {
       atEdge = el.scrollTop < 80;
+      nearOldEnd = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
     }
     isAutoScrollRef.current = atEdge;
     setIsAutoScroll(atEdge);
     if (atEdge) setUnreadCount(0);
+    if (nearOldEnd) loadOlderItems();
   };
 
   const scrollToEdge = () => {
@@ -223,6 +271,9 @@ export default function DanmakuPage() {
       setDanmakuList([]);
       setScList([]);
       setGiftList([]);
+      setHasMore(false);
+      hasMoreRef.current = false;
+      loadedStartOffsetRef.current = 0;
     } catch (e) {
       alert(e.response?.data?.error || '连接失败');
     } finally {
@@ -384,14 +435,15 @@ export default function DanmakuPage() {
         <div className="dm-col dm-col-danmaku">
           <div className="dm-col-header">
             弹幕 <span className="dm-col-count">{danmakuList.length}</span>
-            {preloading && preloadProgress.total > 0 && (
-              <span className="dm-preload-hint">
-                {preloadProgress.loaded}/{preloadProgress.total}
-              </span>
+            {hasMore && !loadingOlder && (
+              <span className="dm-preload-hint">向上滚动加载更多</span>
             )}
           </div>
           <div className="dm-list" ref={listRef} onScroll={handleScroll}
             style={{ fontSize: `${fontSize}px` }}>
+            {loadingOlder && scrollDir !== 'down' && (
+              <div className="dm-loading-older"><span className="dm-loading-spinner" />加载更早的消息</div>
+            )}
             {filtered.map(msg => {
               if (msg.type === 'divider') {
                 return (
@@ -426,6 +478,9 @@ export default function DanmakuPage() {
                 </div>
               );
             })}
+            {loadingOlder && scrollDir === 'down' && (
+              <div className="dm-loading-older"><span className="dm-loading-spinner" />加载更早的消息</div>
+            )}
           </div>
           {!isAutoScroll && unreadCount > 0 && (
             <button className="dm-new-msg-btn" onClick={scrollToEdge}>
