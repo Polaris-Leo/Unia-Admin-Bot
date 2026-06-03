@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
+import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite, getMe } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
 import './ModsPage.css';
 
@@ -208,9 +208,10 @@ function ConfirmModal({ title, message, onConfirm, onClose, danger = true }) {
 }
 
 export default function ModsPage() {
+  const [me, setMe] = useState(null);
   const [mods, setMods] = useState([]);
   const [invites, setInvites] = useState([]);
-  const [tab, setTab] = useState('users');
+  const [tab, setTab] = useState('invites'); // 默认邀请码，权限检查后再切换
 
   const [editingMod, setEditingMod] = useState(null);
   const [confirmState, setConfirmState] = useState(null);
@@ -221,13 +222,21 @@ export default function ModsPage() {
   const [newInvite, setNewInvite] = useState(null);
   const [linkCopied, setLinkCopied] = useState(false);
 
+  const isSuperAdmin = me?.is_superadmin;
+
   const load = async () => {
     const [m, i] = await Promise.all([getMods(), getInvites()]);
     setMods(m.data);
     setInvites(i.data);
   };
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    getMe().then(r => {
+      setMe(r.data);
+      if (r.data?.is_superadmin) setTab('users');
+    }).catch(() => {});
+    load();
+  }, []);
 
   const handleCreate = async (form) => {
     const res = await createMod(form);
@@ -326,12 +335,14 @@ export default function ModsPage() {
       <div className="mods-header">
         <span className="mods-title">用户管理</span>
         <div className="mods-tabs">
-          <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>用户列表</button>
+          {isSuperAdmin && (
+            <button className={tab === 'users' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('users')}>用户列表</button>
+          )}
           <button className={tab === 'invites' ? 'mods-tab active' : 'mods-tab'} onClick={() => setTab('invites')}>邀请码</button>
         </div>
       </div>
 
-      {tab === 'users' && (
+      {tab === 'users' && isSuperAdmin && (
         <div className="mods-content">
           <div className="mods-toolbar">
             <button className="mods-create-btn" onClick={() => setShowCreateModal(true)}>
