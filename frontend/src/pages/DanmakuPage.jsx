@@ -62,7 +62,7 @@ export default function DanmakuPage() {
 
   // Settings
   const [settingsOpen, setSettingsOpen] = useState(false);
-  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('dm-font-size')) || 13);
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('dm-font-size')) || 15);
   const [scrollDir, setScrollDir] = useState(() => localStorage.getItem('dm-scroll-dir') || 'up');
 
   const wsRef = useRef(null);
@@ -479,13 +479,17 @@ export default function DanmakuPage() {
               弹幕字号
               <span className="dm-settings-value">{fontSize}px</span>
             </div>
-            <input
-              type="range" min="10" max="25" step="1"
-              value={fontSize}
-              onChange={e => handleFontSize(Number(e.target.value))}
-              className="dm-settings-slider"
-            />
-            <div className="dm-settings-range-hint"><span>小</span><span>大</span></div>
+            <div className="dm-settings-steps">
+              {[5,7,9,11,13,15,17,19,21,23,25].map(v => (
+                <button
+                  key={v}
+                  className={`dm-settings-step${fontSize === v ? ' active' : ''}`}
+                  onClick={() => handleFontSize(v)}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="dm-settings-group">
