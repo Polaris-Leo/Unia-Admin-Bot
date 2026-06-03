@@ -187,22 +187,22 @@
 .dm-user {
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 0.3em;
   cursor: pointer;
   flex-shrink: 0;
-  max-width: 130px;
+  max-width: 10em;
 }
 .dm-user:hover .dm-username { color: var(--primary); }
 
 .dm-avatar {
-  width: 18px; height: 18px;
+  width: 1.4em; height: 1.4em;
   border-radius: 50%;
   flex-shrink: 0;
   object-fit: cover;
 }
 
 .dm-guard-badge {
-  font-size: 10px;
+  font-size: 0.77em;
   padding: 0 4px;
   border-radius: 3px;
   color: #fff;
@@ -210,12 +210,11 @@
 }
 
 .dm-username {
-  font-size: 12px;
   color: var(--text-2);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  max-width: 90px;
+  max-width: 7em;
 }
 
 .dm-content {
