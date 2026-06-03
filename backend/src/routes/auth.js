@@ -65,7 +65,7 @@ router.post('/invite', requireAuth, requireAdmin, (req, res, next) => {
 });
 
 router.get('/me', requireAuth, (req, res) => {
-  const mod = db.prepare('SELECT id, username, role, created_at FROM mods WHERE id = ?').get(req.mod.id);
+  const mod = db.prepare('SELECT id, username, role, is_superadmin, created_at FROM mods WHERE id = ?').get(req.mod.id);
   res.json(mod);
 });
 
