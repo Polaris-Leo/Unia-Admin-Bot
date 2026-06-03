@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'react-router-dom';
+import * as XLSX from 'xlsx';
 import { getHistorySessions, getHistoryData, searchHistory } from '../services/api';
 import api from '../services/api';
 import { isSmallEmote } from '../utils/emoteUtils';
@@ -40,35 +41,41 @@ function renderContent(content, emots) {
   });
 }
 
+// ── 纯文本提取弹幕内容（表情替换为文字key）──
+function extractText(content, emots) {
+  if (!content) return '';
+  if (!emots) return content;
+  return content; // 原始文本已包含 [xxx] 形式
+}
+
 export default function HistoryPage() {
   const location = useLocation();
   const [roomId, setRoomId] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
 
-  // Draft = what user is typing; applied = what was last searched
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [applied, setApplied] = useState(null);
 
-  // Session view data
   const [sessionData, setSessionData] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(false);
 
-  // Cross-session search results
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
-  // Session dropdown
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
 
-  // UserActionPopup
   const [selectedUser, setSelectedUser] = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
 
-  // Close dropdown on outside click
+  // Export
+  const [showExportModal, setShowExportModal] = useState(false);
+  const [exportTypes, setExportTypes] = useState({ danmaku: true, sc: true, gift: true });
+  const [exporting, setExporting] = useState(false);
+
   useEffect(() => {
     function handleClickOutside(e) {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -111,7 +118,6 @@ export default function HistoryPage() {
     setApplied(f);
 
     if (f.sessionId) {
-      // Single session mode: load and filter client-side
       setSessionData(null);
       setSessionLoading(true);
       try {
@@ -121,7 +127,6 @@ export default function HistoryPage() {
         setSessionLoading(false);
       }
     } else {
-      // Cross-session search mode
       setSearchResults([]);
       if (!f.uid && !f.keyword && !f.username) return;
       setSearchLoading(true);
@@ -138,7 +143,6 @@ export default function HistoryPage() {
           to,
         });
         let results = res.data || [];
-        // If both username and keyword provided, additionally filter by username client-side
         if (f.username && f.keyword) {
           const u = f.username.toLowerCase();
           results = results.filter(m => m.user?.username?.toLowerCase().includes(u));
@@ -171,7 +175,86 @@ export default function HistoryPage() {
     setSelectedMsg(msg);
   };
 
-  // Sessions filtered by draft date range (for dropdown display)
+  // ── Export ──
+  const handleExport = () => {
+    const hasData = mode === 'session'
+      ? (filteredDanmaku.length || scList.length || giftList.length)
+      : searchResults.length;
+    if (!hasData) return;
+    setExportTypes({ danmaku: true, sc: mode === 'session', gift: mode === 'session' });
+    setShowExportModal(true);
+  };
+
+  const confirmExport = () => {
+    setExporting(true);
+    try {
+      const wb = XLSX.utils.book_new();
+      const isCross = mode === 'search';
+
+      if (exportTypes.danmaku) {
+        const rows = isCross ? searchResults : filteredDanmaku;
+        const headers = isCross
+          ? ['时间', '场次', 'UID', '用户名', '舰长等级', '弹幕内容']
+          : ['时间', 'UID', '用户名', '舰长等级', '弹幕内容'];
+        const data = rows.map(m => {
+          const base = [
+            formatTs(m.timestamp),
+            ...(isCross ? [formatTs(m.sessionId)] : []),
+            String(m.user?.uid || ''),
+            m.user?.username || '',
+            GUARD_LABELS[m.user?.guardLevel] || '',
+            extractText(m.content, m.emots),
+          ];
+          return base;
+        });
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        ws['!cols'] = isCross
+          ? [{ wch: 20 }, { wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 40 }]
+          : [{ wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 8 }, { wch: 40 }];
+        XLSX.utils.book_append_sheet(wb, ws, '弹幕');
+      }
+
+      if (exportTypes.sc && !isCross && scList.length) {
+        const headers = ['时间', 'UID', '用户名', '金额(¥)', '内容'];
+        const data = scList.map(m => [
+          formatTs(m.timestamp || m.time),
+          String(m.user?.uid || ''),
+          m.user?.username || '',
+          m.price ?? '',
+          m.message || '',
+        ]);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 10 }, { wch: 50 }];
+        XLSX.utils.book_append_sheet(wb, ws, 'SC醒目留言');
+      }
+
+      if (exportTypes.gift && !isCross && giftList.length) {
+        const headers = ['时间', 'UID', '用户名', '礼物名称', '数量'];
+        const data = giftList.map(m => [
+          formatTs(m.timestamp),
+          String(m.user?.uid || ''),
+          m.user?.username || '',
+          m.giftName || '',
+          m.num ?? '',
+        ]);
+        const ws = XLSX.utils.aoa_to_sheet([headers, ...data]);
+        ws['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 16 }, { wch: 20 }, { wch: 8 }];
+        XLSX.utils.book_append_sheet(wb, ws, '礼物');
+      }
+
+      if (wb.SheetNames.length === 0) { setExporting(false); return; }
+
+      const label = applied?.sessionId
+        ? formatTs(applied.sessionId).replace(/[/:]/g, '-').replace(/\s/g, '_')
+        : `搜索_${new Date().toLocaleDateString().replace(/\//g, '-')}`;
+      XLSX.writeFile(wb, `历史记录_${label}.xlsx`);
+    } finally {
+      setExporting(false);
+      setShowExportModal(false);
+    }
+  };
+
+  // ── Derived state ──
   const filteredSessionsForDropdown = sessions.filter(s => {
     const ts = Number(s);
     if (draft.startDate) {
@@ -185,7 +268,6 @@ export default function HistoryPage() {
     return true;
   });
 
-  // Client-side filtering of session danmaku
   const danmakuList = sessionData?.danmaku || [];
   const scList      = sessionData?.superchat || [];
   const giftList    = sessionData?.gift || [];
@@ -218,8 +300,56 @@ export default function HistoryPage() {
 
   const crossSearchNeedsInput = mode === 'search' && !applied.uid && !applied.keyword && !applied.username;
 
+  const canExport = mode === 'session'
+    ? !sessionLoading && (filteredDanmaku.length || scList.length || giftList.length)
+    : mode === 'search' && !searchLoading && !crossSearchNeedsInput && searchResults.length > 0;
+
   return (
     <div className="history-page">
+
+      {/* ── Export modal ── */}
+      {showExportModal && (
+        <div className="hx-modal-overlay" onClick={() => setShowExportModal(false)}>
+          <div className="hx-modal" onClick={e => e.stopPropagation()}>
+            <div className="hx-modal-header">
+              <span>导出选项</span>
+              <button className="hx-modal-close" onClick={() => setShowExportModal(false)}>×</button>
+            </div>
+            <div className="hx-modal-body">
+              <p className="hx-modal-hint">选择要导出的内容（每类一个 Sheet）：</p>
+              {[
+                { key: 'danmaku', label: `弹幕`, count: mode === 'search' ? searchResults.length : filteredDanmaku.length },
+                { key: 'sc',     label: `SC 醒目留言`, count: scList.length,  disabled: mode === 'search' },
+                { key: 'gift',   label: `礼物`,        count: giftList.length, disabled: mode === 'search' },
+              ].map(({ key, label, count, disabled }) => (
+                <label
+                  key={key}
+                  className={`hx-check-row${disabled ? ' disabled' : ''}${exportTypes[key] && !disabled ? ' active' : ''}`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={exportTypes[key] && !disabled}
+                    disabled={disabled}
+                    onChange={e => setExportTypes(t => ({ ...t, [key]: e.target.checked }))}
+                  />
+                  <span className="hx-check-label">{label}</span>
+                  <span className="hx-check-count">{disabled ? '跨场次搜索不含此项' : `${count} 条`}</span>
+                </label>
+              ))}
+            </div>
+            <div className="hx-modal-footer">
+              <button className="hf-btn-reset" onClick={() => setShowExportModal(false)}>取消</button>
+              <button
+                className="hf-btn-search"
+                onClick={confirmExport}
+                disabled={exporting || !Object.values(exportTypes).some(Boolean)}
+              >
+                {exporting ? '导出中...' : '确认导出'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Left sidebar: Filter panel ── */}
       <div className="history-sidebar">
@@ -328,18 +458,23 @@ export default function HistoryPage() {
             <button className="hf-btn-search" onClick={handleSearch}>查询</button>
           </div>
 
+          {/* Export button */}
+          {canExport && (
+            <button className="hf-btn-export" onClick={handleExport}>
+              ↓ 导出 Excel
+            </button>
+          )}
+
         </div>
       </div>
 
       {/* ── Right main area ── */}
       <div className="history-main">
 
-        {/* Placeholder */}
         {mode === 'placeholder' && (
           <div className="history-placeholder">设置筛选条件后点击查询</div>
         )}
 
-        {/* Single session view */}
         {mode === 'session' && (
           <>
             <div className="history-topbar">
@@ -355,7 +490,6 @@ export default function HistoryPage() {
 
             {!sessionLoading && (
               <div className="dm-main">
-                {/* Danmaku column */}
                 <div className="dm-col dm-col-danmaku">
                   <div className="dm-col-header">
                     弹幕
@@ -392,7 +526,6 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                {/* SC column */}
                 <div className="dm-col dm-col-sc">
                   <div className="dm-col-header">
                     醒目留言 <span className="dm-col-count">{scList.length}</span>
@@ -412,7 +545,6 @@ export default function HistoryPage() {
                   </div>
                 </div>
 
-                {/* Gift column */}
                 <div className="dm-col dm-col-gift">
                   <div className="dm-col-header">
                     礼物 <span className="dm-col-count">{giftList.length}</span>
@@ -434,7 +566,6 @@ export default function HistoryPage() {
           </>
         )}
 
-        {/* Cross-session search results */}
         {mode === 'search' && (
           <div className="history-search-results">
             <div className="history-topbar">
