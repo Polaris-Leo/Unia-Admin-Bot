@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { startDanmaku, stopDanmaku, getDanmakuRecent } from '../services/api';
 import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
+import CustomSelect from '../components/CustomSelect';
 import { isSmallEmote } from '../utils/emoteUtils';
 import './DanmakuPage.css';
 
@@ -228,7 +229,7 @@ export default function DanmakuPage() {
   const renderContent = (content, emots) => {
     if (!content) return null;
     if (!emots) return highlight(content);
-    const parts = content.split(/(\[[^\]]+\])/);
+    const parts = content.split(/(\[+[^\]]+\]+)/);
     return parts.map((part, i) => {
       const emot = part.startsWith('[') && part.endsWith(']') ? emots[part] : null;
       if (emot) {
@@ -276,19 +277,17 @@ export default function DanmakuPage() {
             value={filterText}
             onChange={e => setFilterText(e.target.value)}
           />
-          <div className="select-wrap">
-            <select
-              className="dm-filter-select"
-              value={filterType}
-              onChange={e => setFilterType(e.target.value)}
-            >
-              <option value="all">全部</option>
-              <option value="danmaku">弹幕</option>
-              <option value="gift">礼物</option>
-              <option value="superchat">SC</option>
-              <option value="guard">上舰</option>
-            </select>
-          </div>
+          <CustomSelect
+            value={filterType}
+            onChange={setFilterType}
+            options={[
+              { value: 'all',      label: '全部' },
+              { value: 'danmaku',  label: '弹幕' },
+              { value: 'gift',     label: '礼物' },
+              { value: 'superchat',label: 'SC'   },
+              { value: 'guard',    label: '上舰' },
+            ]}
+          />
           {(filterText || filterUid || filterType !== 'all') && (
             <button className="dm-filter-clear" onClick={() => { setFilterText(''); setFilterUid(null); setFilterType('all'); }}>
               ×

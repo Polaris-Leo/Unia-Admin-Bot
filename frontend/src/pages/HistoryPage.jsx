@@ -10,6 +10,8 @@ import './HistoryPage.css';
 const GUARD_LABELS = { 1: '总督', 2: '提督', 3: '舰长' };
 const GUARD_COLORS  = { 1: '#f0a500', 2: '#9b59b6', 3: '#3498db' };
 
+const EMPTY_DRAFT = { sessionId: '', startDate: '', endDate: '', username: '', uid: '', keyword: '' };
+
 function formatTs(ts) {
   if (!ts) return '';
   return new Date(ts > 1e10 ? ts : ts * 1000).toLocaleString();
@@ -24,7 +26,7 @@ function formatTime(ts) {
 function renderContent(content, emots) {
   if (!content) return null;
   if (!emots) return content;
-  const parts = content.split(/(\[[^\]]+\])/);
+  const parts = content.split(/(\[+[^\]]+\]+)/);
   return parts.map((part, i) => {
     const emot = part.startsWith('[') && part.endsWith(']') ? emots[part] : null;
     if (emot) {
@@ -43,25 +45,39 @@ export default function HistoryPage() {
   const [roomId, setRoomId] = useState(null);
   const [sessions, setSessions] = useState([]);
   const [sessionsLoading, setSessionsLoading] = useState(false);
-  const [selectedSession, setSelectedSession] = useState(null);
+
+  // Draft = what user is typing; applied = what was last searched
+  const [draft, setDraft] = useState(EMPTY_DRAFT);
+  const [applied, setApplied] = useState(null);
+
+  // Session view data
   const [sessionData, setSessionData] = useState(null);
   const [sessionLoading, setSessionLoading] = useState(false);
 
-  const [filterText, setFilterText] = useState('');
-  const [filterUid, setFilterUid] = useState(null);
-
-  const [searchKeyword, setSearchKeyword] = useState('');
-  const [searchUid, setSearchUid] = useState(null);
-  const [searchMode, setSearchMode] = useState(false);
+  // Cross-session search results
   const [searchResults, setSearchResults] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
 
+  // Session dropdown
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
+  // UserActionPopup
   const [selectedUser, setSelectedUser] = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
 
-  const searchInputRef = useRef(null);
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClickOutside(e) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+        setIsDropdownOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     api.get('/danmaku/rooms').then(r => {
@@ -71,12 +87,9 @@ export default function HistoryPage() {
         loadSessions(id);
         const initUid = location.state?.uid;
         if (initUid) {
-          setSearchUid(initUid);
-          setSearchMode(true);
-          setSearchLoading(true);
-          searchHistory({ uid: initUid, roomId: id }).then(res => {
-            setSearchResults(res.data);
-          }).finally(() => setSearchLoading(false));
+          const initDraft = { ...EMPTY_DRAFT, uid: String(initUid) };
+          setDraft(initDraft);
+          runSearch(initDraft, id);
         }
       }
     }).catch(() => {});
@@ -92,36 +105,58 @@ export default function HistoryPage() {
     }
   };
 
-  const selectSession = async (sessionId) => {
-    if (selectedSession === sessionId && !searchMode) return;
-    setSelectedSession(sessionId);
-    setSearchMode(false);
-    setFilterText('');
-    setFilterUid(null);
-    setSessionData(null);
-    setSessionLoading(true);
-    try {
-      const res = await getHistoryData(roomId, sessionId);
-      setSessionData(res.data);
-    } finally {
-      setSessionLoading(false);
+  const runSearch = async (f, rid) => {
+    const resolvedRid = rid ?? roomId;
+    if (!resolvedRid) return;
+    setApplied(f);
+
+    if (f.sessionId) {
+      // Single session mode: load and filter client-side
+      setSessionData(null);
+      setSessionLoading(true);
+      try {
+        const res = await getHistoryData(resolvedRid, f.sessionId);
+        setSessionData(res.data);
+      } finally {
+        setSessionLoading(false);
+      }
+    } else {
+      // Cross-session search mode
+      setSearchResults([]);
+      if (!f.uid && !f.keyword && !f.username) return;
+      setSearchLoading(true);
+      try {
+        const from = f.startDate
+          ? Math.floor(new Date(f.startDate + 'T00:00:00').getTime() / 1000) : undefined;
+        const to = f.endDate
+          ? Math.floor(new Date(f.endDate + 'T23:59:59').getTime() / 1000) : undefined;
+        const res = await searchHistory({
+          uid: f.uid || undefined,
+          keyword: f.keyword || f.username || undefined,
+          roomId: resolvedRid,
+          from,
+          to,
+        });
+        let results = res.data || [];
+        // If both username and keyword provided, additionally filter by username client-side
+        if (f.username && f.keyword) {
+          const u = f.username.toLowerCase();
+          results = results.filter(m => m.user?.username?.toLowerCase().includes(u));
+        }
+        setSearchResults(results);
+      } finally {
+        setSearchLoading(false);
+      }
     }
   };
 
-  const handleSearch = async (overrides = {}) => {
-    const uid = overrides.uid !== undefined ? overrides.uid : searchUid;
-    const keyword = overrides.keyword !== undefined ? overrides.keyword : searchKeyword;
-    if (!roomId) return;
-    if (!uid && !keyword?.trim()) return;
-    setSearchLoading(true);
-    setSearchMode(true);
-    setSelectedSession(null);
-    try {
-      const res = await searchHistory({ uid, keyword, roomId });
-      setSearchResults(res.data);
-    } finally {
-      setSearchLoading(false);
-    }
+  const handleSearch = () => runSearch(draft);
+
+  const handleReset = () => {
+    setDraft(EMPTY_DRAFT);
+    setApplied(null);
+    setSessionData(null);
+    setSearchResults([]);
   };
 
   const handleUserClick = (e, user, msg) => {
@@ -136,129 +171,179 @@ export default function HistoryPage() {
     setSelectedMsg(msg);
   };
 
+  // Sessions filtered by draft date range (for dropdown display)
+  const filteredSessionsForDropdown = sessions.filter(s => {
+    const ts = Number(s);
+    if (draft.startDate) {
+      const start = Math.floor(new Date(draft.startDate + 'T00:00:00').getTime() / 1000);
+      if (ts < start) return false;
+    }
+    if (draft.endDate) {
+      const end = Math.floor(new Date(draft.endDate + 'T23:59:59').getTime() / 1000);
+      if (ts > end) return false;
+    }
+    return true;
+  });
+
+  // Client-side filtering of session danmaku
   const danmakuList = sessionData?.danmaku || [];
   const scList      = sessionData?.superchat || [];
   const giftList    = sessionData?.gift || [];
 
   const filteredDanmaku = danmakuList.filter(msg => {
     if (msg.type === 'divider') return false;
-    if (filterUid && String(msg.user?.uid) !== String(filterUid)) return false;
-    if (filterText) {
-      const t = filterText.toLowerCase();
-      return msg.content?.toLowerCase().includes(t) ||
-             msg.user?.username?.toLowerCase().includes(t) ||
-             String(msg.user?.uid).includes(t);
+    if (!applied) return true;
+    if (applied.uid && String(msg.user?.uid) !== String(applied.uid)) return false;
+    if (applied.username) {
+      if (!msg.user?.username?.toLowerCase().includes(applied.username.toLowerCase())) return false;
+    }
+    if (applied.keyword) {
+      const t = applied.keyword.toLowerCase();
+      if (!msg.content?.toLowerCase().includes(t) && !msg.user?.username?.toLowerCase().includes(t)) return false;
+    }
+    if (applied.startDate) {
+      const start = new Date(applied.startDate + 'T00:00:00').getTime() / 1000;
+      if ((msg.timestamp || 0) < start) return false;
+    }
+    if (applied.endDate) {
+      const end = new Date(applied.endDate + 'T23:59:59').getTime() / 1000;
+      if ((msg.timestamp || 0) > end) return false;
     }
     return true;
   });
 
-  const searchLabel = searchUid
-    ? (searchKeyword.trim() ? `UID:${searchUid}  "${searchKeyword}"` : `UID:${searchUid}`)
-    : `"${searchKeyword}"`;
+  const mode = applied === null ? 'placeholder'
+    : applied.sessionId ? 'session'
+    : 'search';
+
+  const crossSearchNeedsInput = mode === 'search' && !applied.uid && !applied.keyword && !applied.username;
 
   return (
     <div className="history-page">
-      {/* Left sidebar */}
+
+      {/* ── Left sidebar: Filter panel ── */}
       <div className="history-sidebar">
-        <div className="history-sidebar-header">历史记录</div>
-        <div className="history-search-box">
-          <input
-            ref={searchInputRef}
-            className="history-search-input"
-            placeholder="跨场次搜索弹幕..."
-            value={searchKeyword}
-            onChange={e => setSearchKeyword(e.target.value)}
-            onKeyDown={e => e.key === 'Enter' && handleSearch()}
-          />
-          <button className="history-search-btn" onClick={() => handleSearch()} disabled={searchLoading}>
-            {searchLoading ? '…' : '搜'}
-          </button>
-        </div>
-        <div className="history-session-list">
-          {sessionsLoading && <div className="history-empty">加载中...</div>}
-          {!sessionsLoading && sessions.length === 0 && (
-            <div className="history-empty">暂无历史记录</div>
-          )}
-          {sessions.map(s => (
-            <div
-              key={s}
-              className={`history-session-item ${selectedSession === s && !searchMode ? 'active' : ''}`}
-              onClick={() => selectSession(s)}
-            >
-              {formatTs(s)}
-            </div>
-          ))}
-        </div>
-      </div>
+        <div className="history-sidebar-header">筛选</div>
 
-      {/* Right main area */}
-      <div className="history-main">
+        <div className="hf-body">
 
-        {/* Placeholder */}
-        {!selectedSession && !searchMode && (
-          <div className="history-placeholder">选择左侧场次，或在搜索框搜索历史弹幕</div>
-        )}
-
-        {/* Search results */}
-        {searchMode && (
-          <div className="history-search-results">
-            <div className="history-topbar">
-              {searchUid && (
-                <span className="history-uid-tag">UID: {searchUid}</span>
-              )}
-              <span className="history-session-label">搜索 {searchLabel}</span>
-              <span className="history-stats">{searchResults.length} 条结果</span>
-              <button className="history-exit-search" onClick={() => {
-                setSearchMode(false);
-                setSearchUid(null);
-              }}>× 退出搜索</button>
-            </div>
-            <div className="dm-list history-search-list">
-              {searchLoading && <div className="history-empty">搜索中...</div>}
-              {!searchLoading && searchResults.length === 0 && (
-                <div className="history-empty">无结果</div>
-              )}
-              {searchResults.map((msg, i) => (
-                <div key={i} className="dm-row">
-                  <span className="dm-time">{formatTime(msg.timestamp)}</span>
-                  <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
-                    {msg.user?.face && (
-                      <img src={msg.user.face} alt="" className="dm-avatar" referrerPolicy="no-referrer"
-                        onError={e => e.target.style.display = 'none'} />
-                    )}
-                    <span className="dm-username">{msg.user?.username}</span>
+          {/* 场次 */}
+          <div className="hf-group">
+            <div className="hf-label">场次</div>
+            <div className="hf-session-dropdown" ref={dropdownRef}>
+              <div
+                className={`hf-dropdown-trigger ${isDropdownOpen ? 'active' : ''}`}
+                onClick={() => setIsDropdownOpen(v => !v)}
+              >
+                <span>{draft.sessionId ? formatTs(draft.sessionId) : '全部场次'}</span>
+                <svg className="hf-dropdown-arrow" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </div>
+              {isDropdownOpen && (
+                <div className="hf-dropdown-options">
+                  <div
+                    className={`hf-dropdown-option ${!draft.sessionId ? 'selected' : ''}`}
+                    onClick={() => { setDraft(d => ({ ...d, sessionId: '' })); setIsDropdownOpen(false); }}
+                  >
+                    全部场次
                   </div>
-                  <span className="dm-content">{renderContent(msg.content, msg.emots)}</span>
-                  <span className="history-session-tag">{formatTs(msg.sessionId)}</span>
+                  {sessionsLoading && (
+                    <div className="hf-dropdown-option disabled">加载中...</div>
+                  )}
+                  {!sessionsLoading && filteredSessionsForDropdown.map(s => (
+                    <div
+                      key={s}
+                      className={`hf-dropdown-option ${draft.sessionId === String(s) ? 'selected' : ''}`}
+                      onClick={() => { setDraft(d => ({ ...d, sessionId: String(s) })); setIsDropdownOpen(false); }}
+                    >
+                      {formatTs(s)}
+                    </div>
+                  ))}
+                  {!sessionsLoading && filteredSessionsForDropdown.length === 0 && (
+                    <div className="hf-dropdown-option disabled">无符合条件的场次</div>
+                  )}
                 </div>
-              ))}
-              {searchResults.length >= 500 && (
-                <div className="history-empty">已显示最多 500 条结果</div>
               )}
             </div>
           </div>
+
+          {/* 日期范围 */}
+          <div className="hf-group">
+            <div className="hf-label">日期范围</div>
+            <input
+              type="date"
+              className="hf-input"
+              value={draft.startDate}
+              onChange={e => setDraft(d => ({ ...d, startDate: e.target.value }))}
+            />
+            <div className="hf-date-sep">至</div>
+            <input
+              type="date"
+              className="hf-input"
+              value={draft.endDate}
+              onChange={e => setDraft(d => ({ ...d, endDate: e.target.value }))}
+            />
+          </div>
+
+          {/* 用户名 */}
+          <div className="hf-group">
+            <div className="hf-label">用户名</div>
+            <input
+              className="hf-input"
+              placeholder="输入用户名"
+              value={draft.username}
+              onChange={e => setDraft(d => ({ ...d, username: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+          </div>
+
+          {/* UID */}
+          <div className="hf-group">
+            <div className="hf-label">UID</div>
+            <input
+              className="hf-input"
+              placeholder="输入 UID"
+              value={draft.uid}
+              onChange={e => setDraft(d => ({ ...d, uid: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+          </div>
+
+          {/* 弹幕内容 */}
+          <div className="hf-group">
+            <div className="hf-label">弹幕内容</div>
+            <input
+              className="hf-input"
+              placeholder="关键词"
+              value={draft.keyword}
+              onChange={e => setDraft(d => ({ ...d, keyword: e.target.value }))}
+              onKeyDown={e => e.key === 'Enter' && handleSearch()}
+            />
+          </div>
+
+          {/* Buttons */}
+          <div className="hf-actions">
+            <button className="hf-btn-reset" onClick={handleReset}>重置</button>
+            <button className="hf-btn-search" onClick={handleSearch}>查询</button>
+          </div>
+
+        </div>
+      </div>
+
+      {/* ── Right main area ── */}
+      <div className="history-main">
+
+        {/* Placeholder */}
+        {mode === 'placeholder' && (
+          <div className="history-placeholder">设置筛选条件后点击查询</div>
         )}
 
-        {/* Session view */}
-        {selectedSession && !searchMode && (
+        {/* Single session view */}
+        {mode === 'session' && (
           <>
             <div className="history-topbar">
-              <span className="history-session-label">{formatTs(selectedSession)}</span>
-              {filterUid && (
-                <span className="history-uid-tag">
-                  UID: {filterUid}
-                  <button className="history-uid-clear" onClick={() => setFilterUid(null)}>×</button>
-                </span>
-              )}
-              <input
-                className="history-filter-input"
-                placeholder="筛选弹幕内容 / 用户名 / UID..."
-                value={filterText}
-                onChange={e => setFilterText(e.target.value)}
-              />
-              {filterText && (
-                <button className="dm-filter-clear" onClick={() => setFilterText('')}>×</button>
-              )}
+              <span className="history-session-label">{formatTs(applied.sessionId)}</span>
               <span className="history-stats">
                 弹幕 {danmakuList.filter(m => m.type !== 'divider').length}
                 {scList.length > 0 && `  SC ${scList.length}`}
@@ -275,9 +360,6 @@ export default function HistoryPage() {
                   <div className="dm-col-header">
                     弹幕
                     <span className="dm-col-count">{filteredDanmaku.length}</span>
-                    {filterUid && (
-                      <span className="history-filter-hint">已筛选用户</span>
-                    )}
                   </div>
                   <div className="dm-list">
                     {filteredDanmaku.length === 0 && (
@@ -351,6 +433,46 @@ export default function HistoryPage() {
             )}
           </>
         )}
+
+        {/* Cross-session search results */}
+        {mode === 'search' && (
+          <div className="history-search-results">
+            <div className="history-topbar">
+              <span className="history-session-label">跨场次搜索</span>
+              {applied.uid && <span className="history-uid-tag">UID: {applied.uid}</span>}
+              <span className="history-stats">
+                {searchLoading ? '搜索中...' : crossSearchNeedsInput ? '' : `${searchResults.length} 条结果`}
+              </span>
+            </div>
+            <div className="dm-list history-search-list">
+              {searchLoading && <div className="history-empty">搜索中...</div>}
+              {!searchLoading && crossSearchNeedsInput && (
+                <div className="history-empty">跨场次搜索需要填写 UID、用户名或弹幕关键词</div>
+              )}
+              {!searchLoading && !crossSearchNeedsInput && searchResults.length === 0 && (
+                <div className="history-empty">无结果</div>
+              )}
+              {searchResults.map((msg, i) => (
+                <div key={i} className="dm-row">
+                  <span className="dm-time">{formatTime(msg.timestamp)}</span>
+                  <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
+                    {msg.user?.face && (
+                      <img src={msg.user.face} alt="" className="dm-avatar" referrerPolicy="no-referrer"
+                        onError={e => e.target.style.display = 'none'} />
+                    )}
+                    <span className="dm-username">{msg.user?.username}</span>
+                  </div>
+                  <span className="dm-content">{renderContent(msg.content, msg.emots)}</span>
+                  <span className="history-session-tag">{formatTs(msg.sessionId)}</span>
+                </div>
+              ))}
+              {searchResults.length >= 500 && (
+                <div className="history-empty">已显示最多 500 条结果</div>
+              )}
+            </div>
+          </div>
+        )}
+
       </div>
 
       {selectedUser && (
@@ -362,14 +484,16 @@ export default function HistoryPage() {
           onClose={() => { setSelectedUser(null); setSelectedMsg(null); }}
           onBanSuccess={(uid) => setBannedUids(prev => new Set([...prev, uid]))}
           onFilterUser={(uid) => {
-            setFilterUid(uid);
+            const newDraft = { ...draft, uid: String(uid) };
+            setDraft(newDraft);
             setSelectedUser(null);
+            runSearch(newDraft);
           }}
           onViewHistory={(uid) => {
-            setSearchUid(uid);
-            setSearchKeyword('');
+            const newDraft = { ...EMPTY_DRAFT, uid: String(uid) };
+            setDraft(newDraft);
             setSelectedUser(null);
-            handleSearch({ uid, keyword: '' });
+            runSearch(newDraft);
           }}
         />
       )}

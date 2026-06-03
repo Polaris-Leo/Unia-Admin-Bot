@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite } from '../services/api';
+import CustomSelect from '../components/CustomSelect';
 import './ModsPage.css';
 
 function formatTs(ms) {
@@ -380,14 +381,15 @@ export default function ModsPage() {
         <div className="mods-content">
           <div className="mods-invite-create">
             <span className="mods-invite-label">生成邀请链接</span>
-            <div className="select-wrap">
-              <select className="mods-invite-select" value={expiresHours}
-                onChange={e => setExpiresHours(Number(e.target.value))}>
-                <option value={24}>24 小时</option>
-                <option value={72}>72 小时</option>
-                <option value={168}>7 天</option>
-              </select>
-            </div>
+            <CustomSelect
+              value={expiresHours}
+              onChange={setExpiresHours}
+              options={[
+                { value: 24,  label: '24 小时' },
+                { value: 72,  label: '72 小时' },
+                { value: 168, label: '7 天'    },
+              ]}
+            />
             <button className="mods-invite-btn" onClick={handleCreateInvite}>生成</button>
           </div>
           {newInvite && (

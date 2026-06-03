@@ -142,7 +142,7 @@ export default function NavBar() {
 
   return (
     <nav className="navbar">
-      <div className="navbar-brand">Unia Admin</div>
+      <div className="navbar-brand">Unia房管系统</div>
       <div className="navbar-links">
         <NavLink to="/" end className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>弹幕控制台</NavLink>
         <NavLink to="/history" className={({ isActive }) => isActive ? 'nav-link active' : 'nav-link'}>历史记录</NavLink>

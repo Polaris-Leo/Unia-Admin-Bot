@@ -1083,7 +1083,9 @@ export class BilibiliLiveWS {
           // 当有 info[0][13] 时，说明这是一个大表情弹幕
           // 弹幕内容本身就是表情的文本（如"乐"、"摆"）
           // 我们需要将内容包装成 [xxx] 格式，这样前端才能匹配
-          const emotKey = `[${content}]`;
+          const emotKey = (content.startsWith('[') && content.endsWith(']'))
+            ? content
+            : `[${content}]`;
           let emotUrl = emoticon.url;
           if (emotUrl && emotUrl.startsWith('http://')) {
             emotUrl = emotUrl.replace('http://', 'https://');
