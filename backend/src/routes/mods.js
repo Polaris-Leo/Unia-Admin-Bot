@@ -121,17 +121,28 @@ router.delete('/invites/:id', requireAuth, requireAdmin, (req, res, next) => {
   } catch (e) { next(e); }
 });
 
-// 邀请码列表
+// 邀请码列表（超级管理员看全部，普通管理员只看自己的）
 router.get('/invites', requireAuth, requireAdmin, (req, res, next) => {
   try {
-    const rows = db.prepare(`
-      SELECT i.*, m.username AS created_by_name, u.username AS used_by_name
-      FROM invite_tokens i
-      LEFT JOIN mods m ON m.id = i.created_by
-      LEFT JOIN mods u ON u.id = i.used_by
-      ORDER BY i.id DESC
-      LIMIT 50
-    `).all();
+    const caller = db.prepare('SELECT is_superadmin FROM mods WHERE id = ?').get(req.mod.id);
+    const rows = caller?.is_superadmin
+      ? db.prepare(`
+          SELECT i.*, m.username AS created_by_name, u.username AS used_by_name
+          FROM invite_tokens i
+          LEFT JOIN mods m ON m.id = i.created_by
+          LEFT JOIN mods u ON u.id = i.used_by
+          ORDER BY i.id DESC
+          LIMIT 200
+        `).all()
+      : db.prepare(`
+          SELECT i.*, m.username AS created_by_name, u.username AS used_by_name
+          FROM invite_tokens i
+          LEFT JOIN mods m ON m.id = i.created_by
+          LEFT JOIN mods u ON u.id = i.used_by
+          WHERE i.created_by = ?
+          ORDER BY i.id DESC
+          LIMIT 50
+        `).all(req.mod.id);
     res.json(rows);
   } catch (e) { next(e); }
 });

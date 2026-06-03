@@ -219,7 +219,7 @@ export default function ModsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   const [expiresHours, setExpiresHours] = useState(24);
-  const [newInvite, setNewInvite] = useState(null);
+  const [inviteModal, setInviteModal] = useState(null); // { link }
   const [linkCopied, setLinkCopied] = useState(false);
 
   const isSuperAdmin = me?.is_superadmin;
@@ -306,8 +306,9 @@ export default function ModsPage() {
 
   const handleCreateInvite = async () => {
     const res = await createInvite(expiresHours);
-    setNewInvite(res.data);
     setInvites(prev => [res.data, ...prev]);
+    setLinkCopied(false);
+    setInviteModal({ link: res.data.link });
   };
 
   const handleDeleteInvite = (id) => {
@@ -324,14 +325,44 @@ export default function ModsPage() {
   };
 
   const copyLink = () => {
-    if (!newInvite?.link) return;
-    navigator.clipboard.writeText(newInvite.link);
+    if (!inviteModal?.link) return;
+    navigator.clipboard.writeText(inviteModal.link);
     setLinkCopied(true);
     setTimeout(() => setLinkCopied(false), 2000);
   };
 
+  const closeInviteModal = () => {
+    setInviteModal(null);
+    setLinkCopied(false);
+  };
+
   return (
     <div className="mods-page">
+
+      {/* 邀请链接弹窗 */}
+      {inviteModal && (
+        <div className="modal-overlay" onClick={closeInviteModal}>
+          <div className="modal-card" onClick={e => e.stopPropagation()}>
+            <div className="modal-header">
+              <span className="modal-title">邀请链接已生成</span>
+              <button className="modal-close" onClick={closeInviteModal}>×</button>
+            </div>
+            <div className="modal-body">
+              <p className="mods-invite-modal-warning">
+                ⚠️ 链接仅可使用一次，关闭弹窗后将无法再复制。
+              </p>
+              <div className="mods-invite-modal-link">{inviteModal.link}</div>
+            </div>
+            <div className="modal-footer">
+              <button className="modal-btn-cancel" onClick={closeInviteModal}>关闭</button>
+              <button className="modal-btn-confirm" onClick={copyLink}>
+                {linkCopied ? '✓ 已复制' : '复制链接'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="mods-header">
         <span className="mods-title">用户管理</span>
         <div className="mods-tabs">
@@ -403,12 +434,6 @@ export default function ModsPage() {
             />
             <button className="mods-invite-btn" onClick={handleCreateInvite}>生成</button>
           </div>
-          {newInvite && (
-            <div className="mods-invite-result">
-              <span className="mods-invite-link">{newInvite.link}</span>
-              <button className="mods-copy-btn" onClick={copyLink}>{linkCopied ? '✓ 已复制' : '复制'}</button>
-            </div>
-          )}
           <table className="mods-table">
             <thead>
               <tr><th>Token</th><th>创建人</th><th>有效期至</th><th>使用人</th><th>状态</th><th>操作</th></tr>

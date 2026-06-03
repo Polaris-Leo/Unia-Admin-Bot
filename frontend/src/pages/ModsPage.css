@@ -241,3 +241,22 @@
 .mods-invite-valid { color: var(--success); font-size: 11px; }
 .mods-invite-used { color: var(--text-3); font-size: 11px; }
 .mods-invite-expired { color: var(--warning); font-size: 11px; }
+
+.mods-invite-modal-warning {
+  font-size: 12px;
+  color: var(--warning);
+  margin-bottom: 12px;
+  line-height: 1.5;
+}
+
+.mods-invite-modal-link {
+  font-size: 12px;
+  color: var(--primary);
+  word-break: break-all;
+  background: var(--bg-3);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  line-height: 1.6;
+  user-select: all;
+}
