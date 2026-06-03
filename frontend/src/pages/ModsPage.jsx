@@ -306,7 +306,12 @@ export default function ModsPage() {
 
   const handleCreateInvite = async () => {
     const res = await createInvite(expiresHours);
-    setInvites(prev => [res.data, ...prev]);
+    const normalized = {
+      ...res.data,
+      expires_at: res.data.expiresAt,
+      created_by_name: me?.username || '',
+    };
+    setInvites(prev => [normalized, ...prev]);
     setLinkCopied(false);
     setInviteModal({ link: res.data.link });
   };
