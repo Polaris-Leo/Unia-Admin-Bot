@@ -125,7 +125,7 @@ npm run dev
 ```bash
 cd backend
 node --no-warnings -e "
-import bcrypt from 'bcrypt';
+import bcrypt from 'bcryptjs';
 import { DatabaseSync } from 'node:sqlite';
 const hash = await bcrypt.hash('新密码', 10);
 const db = new DatabaseSync('./data/admin.db');

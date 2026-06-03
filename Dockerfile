@@ -6,9 +6,8 @@ RUN npm install --no-fund --no-audit
 COPY frontend/ ./
 RUN npm run build
 
-# Stage 2: Install backend dependencies (needs build tools for bcrypt native addon)
+# Stage 2: Install backend dependencies
 FROM node:24-alpine AS backend-builder
-RUN apk add --no-cache python3 make g++
 WORKDIR /app/backend
 COPY backend/package*.json ./
 RUN npm install --omit=dev --no-fund --no-audit
