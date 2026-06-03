@@ -438,7 +438,7 @@ export default function ModsPage() {
               ]}
             />
             <button className="mods-invite-btn" onClick={handleCreateInvite}>生成</button>
-            <span className="mods-invite-hint">链接关闭后无法再次查看，复制失败请删除后重新创建</span>
+            <span className="mods-invite-hint">弹窗关闭后链接无法再次查看，链接丢失请删除后重新创建</span>
           </div>
           <table className="mods-table">
             <thead>
