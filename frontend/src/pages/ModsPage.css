@@ -25,7 +25,7 @@
   text-align: left; border-bottom: 1px solid var(--border);
   position: sticky; top: 0; z-index: 1;
 }
-.mods-table td { padding: 8px 14px; border-bottom: 1px solid rgba(255,255,255,0.04); }
+.mods-table td { padding: 8px 14px; border-bottom: 1px solid var(--border); }
 .mods-table tr:hover td { background: var(--bg-3); }
 
 .mods-row-disabled td { opacity: 0.45; }

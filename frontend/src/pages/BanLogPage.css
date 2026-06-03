@@ -63,7 +63,7 @@
 
 .banlog-table td {
   padding: 7px 12px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
+  border-bottom: 1px solid var(--border);
   vertical-align: top;
 }
 

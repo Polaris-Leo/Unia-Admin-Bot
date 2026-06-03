@@ -69,7 +69,7 @@
 
 /* date input specific */
 input[type="date"].hf-input {
-  color-scheme: dark;
+  color-scheme: light dark;
 }
 
 .hf-date-sep {
