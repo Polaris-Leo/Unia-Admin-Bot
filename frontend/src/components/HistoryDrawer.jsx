@@ -1,11 +1,7 @@
 import { useState, useEffect } from 'react';
 import { searchHistory, getHistorySessions, getHistoryData } from '../services/api';
+import { formatTs } from '../utils/timeUtils';
 import './HistoryDrawer.css';
-
-function formatTs(ts) {
-  if (!ts) return '';
-  return new Date(ts > 1e10 ? ts : ts * 1000).toLocaleString();
-}
 
 const TYPE_LABELS = { danmaku: '弹幕', superchat: 'SC', gift: '礼物', guard: '上舰' };
 

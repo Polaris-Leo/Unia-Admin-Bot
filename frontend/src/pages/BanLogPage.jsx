@@ -1,12 +1,9 @@
 import { useState, useEffect } from 'react';
 import { getBanLogs, unsilentUser } from '../services/api';
+import { formatTs } from '../utils/timeUtils';
 import './BanLogPage.css';
 
 const BAN_HOUR_LABEL = (h) => h === -1 ? '永久' : h === 0 ? '本场' : `${h}小时`;
-
-function formatTs(ms) {
-  return new Date(ms).toLocaleString();
-}
 
 export default function BanLogPage() {
   const [rows, setRows] = useState([]);

@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { silentUser, unsilentUser, getUserTags, addUserTag, deleteUserTag, getBanList } from '../services/api';
+import { formatTs } from '../utils/timeUtils';
 import './UserActionPopup.css';
 
 const HOUR_OPTIONS = [
@@ -144,7 +145,7 @@ export default function UserActionPopup({
             </div>
             {msg?.timestamp && (
               <div className="popup-time">
-                {new Date((msg.timestamp > 1e10 ? msg.timestamp : msg.timestamp * 1000)).toLocaleString()}
+                {formatTs(msg.timestamp)}
               </div>
             )}
           </div>

@@ -1,11 +1,8 @@
 import { useState, useEffect, useRef } from 'react';
 import { getMods, createMod, updateModRole, updateModProfile, disableMod, enableMod, deleteMod, getInvites, createInvite, deleteInvite, getMe } from '../services/api';
 import CustomSelect from '../components/CustomSelect';
+import { formatTs } from '../utils/timeUtils';
 import './ModsPage.css';
-
-function formatTs(ms) {
-  return new Date(ms).toLocaleString();
-}
 
 function EditUserModal({ mod, onClose, onSave }) {
   const [form, setForm] = useState({ username: mod.username, password: '', confirm: '', role: mod.role });

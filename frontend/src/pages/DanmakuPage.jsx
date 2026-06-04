@@ -5,6 +5,7 @@ import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
 import CustomSelect from '../components/CustomSelect';
 import { isSmallEmote } from '../utils/emoteUtils';
+import { formatTime } from '../utils/timeUtils';
 import './DanmakuPage.css';
 
 let globalIdCounter = 0;
@@ -29,12 +30,6 @@ function getSCColor(price) {
   if (price >= 100)  return { bg: '#E2B52B', bodyBg: '#FFF7E3', text: '#333' };
   if (price >= 50)   return { bg: '#427D9E', bodyBg: '#ECF6F9', text: '#fff' };
   return               { bg: '#2A60B2', bodyBg: '#EDF5FF', text: '#fff' };
-}
-
-function formatTime(ts) {
-  if (!ts) return '';
-  const d = new Date(ts > 1e10 ? ts : ts * 1000);
-  return d.toTimeString().slice(0, 8);
 }
 
 function formatDuration(secs) {

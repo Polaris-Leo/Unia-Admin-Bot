@@ -262,9 +262,9 @@ export class BilibiliLiveWS {
 
           // 会话发生变化（含首次检测到直播）时插入"直播开始"分界线
           if (String(this.currentSessionId) !== String(prevSessionId) && this.currentSessionId) {
-            // 使用 B 站接口返回的开播时间戳（newSessionId = live_time）
+            // 使用 B 站接口返回的开播时间戳（newSessionId = live_time），显示北京时间
             const liveStartTs = Number(newSessionId);
-            const timeStr = new Date(liveStartTs * 1000).toTimeString().slice(0, 5);
+            const timeStr = new Date(liveStartTs * 1000 + 8 * 3600 * 1000).toISOString().slice(11, 16);
             const divider = {
               type: 'divider',
               content: `直播开始 ${timeStr}`,
@@ -1040,7 +1040,7 @@ export class BilibiliLiveWS {
         this.lastSessionEndTime = Date.now();
 
         if (this.currentSessionId) {
-          const timeStr = new Date().toTimeString().slice(0, 5);
+          const timeStr = new Date(Date.now() + 8 * 3600 * 1000).toISOString().slice(11, 16);
           const divider = {
             type: 'divider',
             content: `直播结束 ${timeStr}`,

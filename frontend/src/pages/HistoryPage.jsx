@@ -4,6 +4,7 @@ import * as XLSX from 'xlsx';
 import { getHistorySessions, getHistoryData, searchHistory } from '../services/api';
 import api from '../services/api';
 import { isSmallEmote } from '../utils/emoteUtils';
+import { formatTime, formatTs, formatDateOnly, parseDateStart, parseDateEnd } from '../utils/timeUtils';
 import UserActionPopup from '../components/UserActionPopup';
 import './DanmakuPage.css';
 import './HistoryPage.css';
@@ -26,17 +27,6 @@ function getSCColor(price) {
 }
 
 const EMPTY_DRAFT = { sessionId: '', startDate: '', endDate: '', username: '', uid: '', keyword: '' };
-
-function formatTs(ts) {
-  if (!ts) return '';
-  return new Date(ts > 1e10 ? ts : ts * 1000).toLocaleString();
-}
-
-function formatTime(ts) {
-  if (!ts) return '';
-  const d = new Date(ts > 1e10 ? ts : ts * 1000);
-  return d.toTimeString().slice(0, 8);
-}
 
 function renderContent(content, emots) {
   if (!content) return null;
@@ -155,10 +145,8 @@ export default function HistoryPage() {
       if (!f.uid && !f.keyword && !f.username) return;
       setSearchLoading(true);
       try {
-        const from = f.startDate
-          ? Math.floor(new Date(f.startDate + 'T00:00:00').getTime() / 1000) : undefined;
-        const to = f.endDate
-          ? Math.floor(new Date(f.endDate + 'T23:59:59').getTime() / 1000) : undefined;
+        const from = f.startDate ? parseDateStart(f.startDate) : undefined;
+        const to   = f.endDate   ? parseDateEnd(f.endDate)     : undefined;
         const res = await searchHistory({
           uid: f.uid || undefined,
           keyword: f.keyword || f.username || undefined,
@@ -270,7 +258,7 @@ export default function HistoryPage() {
 
       const label = applied?.sessionId
         ? formatTs(applied.sessionId).replace(/[/:]/g, '-').replace(/\s/g, '_')
-        : `搜索_${new Date().toLocaleDateString().replace(/\//g, '-')}`;
+        : `搜索_${formatDateOnly()}`;
       XLSX.writeFile(wb, `历史记录_${label}.xlsx`);
     } finally {
       setExporting(false);
@@ -281,14 +269,8 @@ export default function HistoryPage() {
   // ── Derived state ──
   const filteredSessionsForDropdown = sessions.filter(s => {
     const ts = Number(s);
-    if (draft.startDate) {
-      const start = Math.floor(new Date(draft.startDate + 'T00:00:00').getTime() / 1000);
-      if (ts < start) return false;
-    }
-    if (draft.endDate) {
-      const end = Math.floor(new Date(draft.endDate + 'T23:59:59').getTime() / 1000);
-      if (ts > end) return false;
-    }
+    if (draft.startDate && ts < parseDateStart(draft.startDate)) return false;
+    if (draft.endDate   && ts > parseDateEnd(draft.endDate))     return false;
     return true;
   });
 
@@ -307,14 +289,8 @@ export default function HistoryPage() {
       const t = applied.keyword.toLowerCase();
       if (!msg.content?.toLowerCase().includes(t) && !msg.user?.username?.toLowerCase().includes(t)) return false;
     }
-    if (applied.startDate) {
-      const start = new Date(applied.startDate + 'T00:00:00').getTime() / 1000;
-      if ((msg.timestamp || 0) < start) return false;
-    }
-    if (applied.endDate) {
-      const end = new Date(applied.endDate + 'T23:59:59').getTime() / 1000;
-      if ((msg.timestamp || 0) > end) return false;
-    }
+    if (applied.startDate && (msg.timestamp || 0) < parseDateStart(applied.startDate)) return false;
+    if (applied.endDate   && (msg.timestamp || 0) > parseDateEnd(applied.endDate))     return false;
     return true;
   });
 
