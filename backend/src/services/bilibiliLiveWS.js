@@ -259,21 +259,6 @@ export class BilibiliLiveWS {
 
           // 更新最后活跃时间
           this.lastSessionEndTime = now;
-
-          // 会话发生变化（含首次检测到直播）时插入"直播开始"分界线
-          if (String(this.currentSessionId) !== String(prevSessionId) && this.currentSessionId) {
-            // 使用 B 站接口返回的开播时间戳（newSessionId = live_time），显示北京时间
-            const liveStartTs = Number(newSessionId);
-            const timeStr = new Date(liveStartTs * 1000 + 8 * 3600 * 1000).toISOString().slice(11, 16);
-            const divider = {
-              type: 'divider',
-              content: `直播开始 ${timeStr}`,
-              timestamp: liveStartTs
-            };
-            saveMessage(this.roomId, this.currentSessionId, 'danmaku', divider);
-            if (this.onDanmaku) this.onDanmaku(divider);
-            console.log(`📌 已插入直播开始分界线 (session: ${prevSessionId ?? 'null'} → ${this.currentSessionId}, 开播时间: ${timeStr})`);
-          }
         } else {
           this.isLive = false;
           // 下播状态下，不重置 currentSessionId，以便记录下播后的弹幕
@@ -1058,9 +1043,24 @@ export class BilibiliLiveWS {
       case 'LIVE': { // 直播开始
         console.log('▶️ 直播开始 (LIVE)');
         this.isLive = true;
-        // 延迟获取状态，确保 API 已更新；getLiveStatus 内部会处理分界线插入
+        // 捕获当前 session（在延迟前），用于判断本次 LIVE 事件是否产生了新场次
+        const preSessionId = this.currentSessionId;
         setTimeout(async () => {
           const status = await this.getLiveStatus();
+          // 只有当 LIVE 事件导致 session 切换时才插入"直播开始"分界线
+          // 不在后端启动/重连时触发，仅响应真实的开播事件
+          if (this.currentSessionId && String(this.currentSessionId) !== String(preSessionId)) {
+            const liveStartTs = Number(this.currentSessionId);
+            const timeStr = new Date(liveStartTs * 1000 + 8 * 3600 * 1000).toISOString().slice(11, 16);
+            const divider = {
+              type: 'divider',
+              content: `直播开始 ${timeStr}`,
+              timestamp: liveStartTs
+            };
+            saveMessage(this.roomId, this.currentSessionId, 'danmaku', divider);
+            if (this.onDanmaku) this.onDanmaku(divider);
+            console.log(`📌 已插入直播开始分界线 (${preSessionId ?? 'null'} → ${this.currentSessionId}, ${timeStr})`);
+          }
           if (status && this.onLiveStatus) this.onLiveStatus(status);
         }, 2000);
         break;
