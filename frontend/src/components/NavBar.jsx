@@ -185,7 +185,7 @@ export default function NavBar() {
         </svg>
       </button>
 
-      {cookieStatus && (() => {
+      {cookieStatus && me?.role === 'admin' && (() => {
         const src = cookieStatus.activeSource;
         const cls = src === 'remote' ? 'connected' : src === 'local' ? 'local' : 'error';
         const label = src === 'remote'
@@ -210,7 +210,7 @@ export default function NavBar() {
         );
       })()}
 
-      {showLoginModal && (
+      {showLoginModal && me?.role === 'admin' && (
         <BilibiliLoginModal
           cookieStatus={cookieStatus}
           onClose={() => setShowLoginModal(false)}
