@@ -536,7 +536,7 @@ export default function DanmakuPage() {
                   onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
                   <span className="dm-time">{formatTime(msg.time)}</span>
                   <span className="dm-sc-text-price" style={{ color: getSCColor(msg.price).bg }}>¥{msg.price}</span>
-                  <span className="dm-gift-user">{msg.user?.username}</span>
+                  <span className="dm-username">{msg.user?.username}</span>
                   <span className="dm-sc-text-msg">{msg.message}</span>
                 </div>
               );

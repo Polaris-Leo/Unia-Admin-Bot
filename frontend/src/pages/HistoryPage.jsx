@@ -621,7 +621,7 @@ export default function HistoryPage() {
                         <div key={i} className="dm-sc-text-row">
                           <span className="dm-time">{formatTime(msg.time || msg.timestamp)}</span>
                           <span className="dm-sc-text-price" style={{ color: getSCColor(msg.price).bg }}>¥{msg.price}</span>
-                          <span className="dm-gift-user">{msg.user?.username}</span>
+                          <span className="dm-username">{msg.user?.username}</span>
                           <span className="dm-sc-text-msg">{msg.message}</span>
                         </div>
                       );
