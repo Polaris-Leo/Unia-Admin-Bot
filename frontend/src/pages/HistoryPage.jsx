@@ -613,7 +613,7 @@ export default function HistoryPage() {
                               </div>
                               <span className="dm-sc-price" style={{ color: colors.text }}>¥{msg.price}</span>
                             </div>
-                            <div className="dm-sc-content" style={{ background: colors.bodyBg }}>{msg.message}</div>
+                            <div className="dm-sc-content" style={{ background: colors.bodyBg, color: '#333' }}>{msg.message}</div>
                           </div>
                         );
                       }
