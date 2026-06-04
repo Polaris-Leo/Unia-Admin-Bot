@@ -3,6 +3,8 @@ backend/node_modules/
 frontend/node_modules/
 backend/data/admin.db
 backend/data/cookies.json
+backend/data/*-cache.json
+backend/data/history/
 backend/.env
 dist/
 frontend/dist/
