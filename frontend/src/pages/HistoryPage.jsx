@@ -10,6 +10,20 @@ import './HistoryPage.css';
 
 const GUARD_LABELS = { 1: '总督', 2: '提督', 3: '舰长' };
 const GUARD_COLORS  = { 1: '#f0a500', 2: '#9b59b6', 3: '#3498db' };
+const GUARD_ICONS = {
+  1: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/governor-DpDXKEdA.png',
+  2: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/supervisor-u43ElIjU.png',
+  3: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/captain-Bjw5Byb5.png',
+};
+
+function getSCColor(price) {
+  if (price >= 2000) return { bg: '#B01E34', bodyBg: '#FFD4D7', text: '#fff' };
+  if (price >= 1000) return { bg: '#E54D4D', bodyBg: '#FFD9D9', text: '#fff' };
+  if (price >= 500)  return { bg: '#E09443', bodyBg: '#FFEBD6', text: '#fff' };
+  if (price >= 100)  return { bg: '#E2B52B', bodyBg: '#FFF7E3', text: '#333' };
+  if (price >= 50)   return { bg: '#427D9E', bodyBg: '#ECF6F9', text: '#fff' };
+  return               { bg: '#2A60B2', bodyBg: '#EDF5FF', text: '#fff' };
+}
 
 const EMPTY_DRAFT = { sessionId: '', startDate: '', endDate: '', username: '', uid: '', keyword: '' };
 
@@ -70,6 +84,16 @@ export default function HistoryPage() {
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
+
+  // Settings（与主页共用 localStorage key，保持一致）
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('dm-font-size')) || 15);
+  const [scDisplayMode, setScDisplayMode] = useState(() => localStorage.getItem('dm-sc-mode') || 'card');
+  const [giftDisplayMode, setGiftDisplayMode] = useState(() => localStorage.getItem('dm-gift-mode') || 'text');
+
+  const handleFontSize = (v) => { setFontSize(v); localStorage.setItem('dm-font-size', v); };
+  const handleScMode   = (v) => { setScDisplayMode(v);   localStorage.setItem('dm-sc-mode', v); };
+  const handleGiftMode = (v) => { setGiftDisplayMode(v); localStorage.setItem('dm-gift-mode', v); };
 
   // Export
   const [showExportModal, setShowExportModal] = useState(false);
@@ -466,6 +490,70 @@ export default function HistoryPage() {
           )}
 
         </div>
+
+        {/* 设置弹出面板 */}
+        {settingsOpen && (
+          <div className="hf-settings-popup">
+            <div className="dm-settings-group">
+              <div className="dm-settings-label">
+                弹幕字号
+                <span className="dm-settings-value">{(fontSize - 15) / 2 > 0 ? '+' : ''}{(fontSize - 15) / 2}</span>
+              </div>
+              <input type="range" min="-5" max="5" step="1"
+                value={(fontSize - 15) / 2}
+                onChange={e => handleFontSize(15 + Number(e.target.value) * 2)}
+                className="dm-settings-slider" />
+            </div>
+
+            <div className="dm-settings-group">
+              <div className="dm-settings-label">SC 显示方式</div>
+              <div className="dm-settings-radio-group">
+                <label className={`dm-settings-radio${scDisplayMode === 'card' ? ' active' : ''}`}>
+                  <input type="radio" name="hx-scMode" value="card"
+                    checked={scDisplayMode === 'card'} onChange={() => handleScMode('card')} />
+                  <span>卡片</span>
+                  <span className="dm-settings-radio-hint">彩色卡片</span>
+                </label>
+                <label className={`dm-settings-radio${scDisplayMode === 'text' ? ' active' : ''}`}>
+                  <input type="radio" name="hx-scMode" value="text"
+                    checked={scDisplayMode === 'text'} onChange={() => handleScMode('text')} />
+                  <span>文字</span>
+                  <span className="dm-settings-radio-hint">紧凑文字行</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="dm-settings-group">
+              <div className="dm-settings-label">礼物显示方式</div>
+              <div className="dm-settings-radio-group">
+                <label className={`dm-settings-radio${giftDisplayMode === 'text' ? ' active' : ''}`}>
+                  <input type="radio" name="hx-giftMode" value="text"
+                    checked={giftDisplayMode === 'text'} onChange={() => handleGiftMode('text')} />
+                  <span>文字</span>
+                  <span className="dm-settings-radio-hint">紧凑文字行</span>
+                </label>
+                <label className={`dm-settings-radio${giftDisplayMode === 'icon' ? ' active' : ''}`}>
+                  <input type="radio" name="hx-giftMode" value="icon"
+                    checked={giftDisplayMode === 'icon'} onChange={() => handleGiftMode('icon')} />
+                  <span>图标</span>
+                  <span className="dm-settings-radio-hint">含礼物图标</span>
+                </label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* 设置按钮（固定在侧边栏左下角）*/}
+        <button
+          className={`hf-settings-btn${settingsOpen ? ' active' : ''}`}
+          onClick={() => setSettingsOpen(v => !v)}
+        >
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+          </svg>
+          显示设置
+        </button>
       </div>
 
       {/* ── Right main area ── */}
@@ -495,7 +583,7 @@ export default function HistoryPage() {
                     弹幕
                     <span className="dm-col-count">{filteredDanmaku.length}</span>
                   </div>
-                  <div className="dm-list">
+                  <div className="dm-list" style={{ fontSize: `${fontSize}px` }}>
                     {filteredDanmaku.length === 0 && (
                       <div className="history-empty">无弹幕</div>
                     )}
@@ -530,18 +618,38 @@ export default function HistoryPage() {
                   <div className="dm-col-header">
                     醒目留言 <span className="dm-col-count">{scList.length}</span>
                   </div>
-                  <div className="dm-list">
+                  <div className="dm-list" style={{ fontSize: `${fontSize}px` }}>
                     {scList.length === 0 && <div className="history-empty">无 SC</div>}
-                    {scList.map((msg, i) => (
-                      <div key={i} className="dm-sc-row">
-                        <div className="dm-sc-header"
-                          style={{ background: `#${msg.backgroundColor || '1a78c2'}` }}>
-                          <span className="dm-sc-user">{msg.user?.username}</span>
-                          <span className="dm-sc-price">¥{msg.price}</span>
+                    {scList.map((msg, i) => {
+                      if (scDisplayMode === 'card') {
+                        const colors = getSCColor(msg.price);
+                        return (
+                          <div key={i} className="dm-sc-row">
+                            <div className="dm-sc-header" style={{ background: colors.bg }}>
+                              <div className="dm-sc-header-left">
+                                {msg.user?.face && (
+                                  <img src={msg.user.face} alt="" className="dm-sc-avatar"
+                                    referrerPolicy="no-referrer" onError={e => e.target.style.display = 'none'} />
+                                )}
+                                <span className="dm-sc-user" style={{ color: colors.text }}>
+                                  {msg.user?.username}
+                                </span>
+                              </div>
+                              <span className="dm-sc-price" style={{ color: colors.text }}>¥{msg.price}</span>
+                            </div>
+                            <div className="dm-sc-content" style={{ background: colors.bodyBg }}>{msg.message}</div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={i} className="dm-sc-text-row">
+                          <span className="dm-time">{formatTime(msg.time || msg.timestamp)}</span>
+                          <span className="dm-sc-text-price" style={{ color: getSCColor(msg.price).bg }}>¥{msg.price}</span>
+                          <span className="dm-gift-user">{msg.user?.username}</span>
+                          <span className="dm-sc-text-msg">{msg.message}</span>
                         </div>
-                        <div className="dm-sc-content">{msg.message}</div>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -549,16 +657,42 @@ export default function HistoryPage() {
                   <div className="dm-col-header">
                     礼物 <span className="dm-col-count">{giftList.length}</span>
                   </div>
-                  <div className="dm-list">
+                  <div className="dm-list" style={{ fontSize: `${fontSize}px` }}>
                     {giftList.length === 0 && <div className="history-empty">无礼物</div>}
-                    {giftList.map((msg, i) => (
-                      <div key={i} className="dm-gift-row"
-                        onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
-                        <span className="dm-gift-user">{msg.user?.username}</span>
-                        <span className="dm-gift-name"> 赠送 {msg.giftName}</span>
-                        <span className="dm-gift-count"> ×{msg.num}</span>
-                      </div>
-                    ))}
+                    {giftList.map((msg, i) => {
+                      if (giftDisplayMode === 'icon') {
+                        const isGuard = msg.type === 'guard';
+                        const iconSrc = isGuard ? GUARD_ICONS[msg.guardLevel] : (msg.giftIconStatic || msg.giftIcon);
+                        return (
+                          <div key={i} className="dm-gift-icon-row"
+                            onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
+                            {iconSrc && (
+                              <img className="dm-gift-icon-img" src={iconSrc} alt={msg.giftName}
+                                referrerPolicy="no-referrer" onError={e => e.target.style.display = 'none'} />
+                            )}
+                            <div className="dm-gift-icon-info">
+                              <span className="dm-gift-user">{msg.user?.username}</span>
+                              <span className="dm-gift-name"> {isGuard ? msg.giftName : `赠送 ${msg.giftName}`}</span>
+                              <span className="dm-gift-count"> ×{msg.num}</span>
+                              {msg.coinType === 'gold' && (msg.totalCoin || msg.price) > 0 && (
+                                <span className="dm-gift-icon-price"> ¥{((msg.totalCoin || msg.price) / 1000).toFixed(1).replace(/\.0$/, '')}</span>
+                              )}
+                              {isGuard && msg.price > 0 && (
+                                <span className="dm-gift-icon-price"> ¥{(msg.price / 1000).toFixed(0)}</span>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      }
+                      return (
+                        <div key={i} className="dm-gift-row"
+                          onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
+                          <span className="dm-gift-user">{msg.user?.username}</span>
+                          <span className="dm-gift-name"> 赠送 {msg.giftName}</span>
+                          <span className="dm-gift-count"> ×{msg.num}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               </div>

@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { startDanmaku, stopDanmaku, getDanmakuSession } from '../services/api';
 import api from '../services/api';
@@ -15,6 +15,21 @@ const MAX_LIVE = 3000; // 直播新消息保留上限
 
 const GUARD_LABELS = { 1: '总督', 2: '提督', 3: '舰长' };
 const GUARD_COLORS = { 1: '#f0a500', 2: '#9b59b6', 3: '#3498db' };
+
+const GUARD_ICONS = {
+  1: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/governor-DpDXKEdA.png',
+  2: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/supervisor-u43ElIjU.png',
+  3: 'https://s1.hdslb.com/bfs/static/blive/live-pay-mono/relation/relation/assets/captain-Bjw5Byb5.png',
+};
+
+function getSCColor(price) {
+  if (price >= 2000) return { bg: '#B01E34', bodyBg: '#FFD4D7', text: '#fff' };
+  if (price >= 1000) return { bg: '#E54D4D', bodyBg: '#FFD9D9', text: '#fff' };
+  if (price >= 500)  return { bg: '#E09443', bodyBg: '#FFEBD6', text: '#fff' };
+  if (price >= 100)  return { bg: '#E2B52B', bodyBg: '#FFF7E3', text: '#333' };
+  if (price >= 50)   return { bg: '#427D9E', bodyBg: '#ECF6F9', text: '#fff' };
+  return               { bg: '#2A60B2', bodyBg: '#EDF5FF', text: '#fff' };
+}
 
 function formatTime(ts) {
   if (!ts) return '';
@@ -64,6 +79,8 @@ export default function DanmakuPage() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [fontSize, setFontSize] = useState(() => Number(localStorage.getItem('dm-font-size')) || 15);
   const [scrollDir, setScrollDir] = useState(() => localStorage.getItem('dm-scroll-dir') || 'up');
+  const [scDisplayMode, setScDisplayMode] = useState(() => localStorage.getItem('dm-sc-mode') || 'card');
+  const [giftDisplayMode, setGiftDisplayMode] = useState(() => localStorage.getItem('dm-gift-mode') || 'text');
 
   const wsRef = useRef(null);
   const listRef = useRef(null);
@@ -74,8 +91,6 @@ export default function DanmakuPage() {
   const loadedStartOffsetRef = useRef(0);
   const loadingOlderRef = useRef(false);
   const hasMoreRef = useRef(false);
-  const adjustScrollRef = useRef(false);
-  const prevScrollHeightRef = useRef(0);
 
   // Live duration timer
   useEffect(() => {
@@ -142,13 +157,6 @@ export default function DanmakuPage() {
     ws.onerror = () => {};
   }, [addMessage]);
 
-  // 预插入旧消息后，保持滚动位置不跳动
-  useLayoutEffect(() => {
-    if (!adjustScrollRef.current || !listRef.current) return;
-    adjustScrollRef.current = false;
-    listRef.current.scrollTop += listRef.current.scrollHeight - prevScrollHeightRef.current;
-  }, [danmakuList]);
-
   const loadOlderItems = useCallback(async () => {
     if (loadingOlderRef.current || !hasMoreRef.current) return;
     const currentStart = loadedStartOffsetRef.current;
@@ -164,13 +172,19 @@ export default function DanmakuPage() {
       const r = await getDanmakuSession(newStart, count);
       const { danmaku: older = [] } = r.data;
       if (older.length) {
+        // 在 setState 前同步记录当前滚动位置，渲染后通过 RAF 补偿高度差，避免内容跳动
         const el = listRef.current;
-        prevScrollHeightRef.current = el ? el.scrollHeight : 0;
-        adjustScrollRef.current = true;
+        const oldScrollHeight = el ? el.scrollHeight : 0;
+        const oldScrollTop = el ? el.scrollTop : 0;
         setDanmakuList(prev => [
           ...older.map(m => ({ ...m, _id: genId() })),
           ...prev,
         ]);
+        requestAnimationFrame(() => {
+          if (listRef.current) {
+            listRef.current.scrollTop = oldScrollTop + (listRef.current.scrollHeight - oldScrollHeight);
+          }
+        });
       }
       loadedStartOffsetRef.current = newStart;
       const more = newStart > 0;
@@ -312,6 +326,9 @@ export default function DanmakuPage() {
       else listRef.current.scrollTop = 0;
     }, 0);
   };
+
+  const handleScMode = (v) => { setScDisplayMode(v); localStorage.setItem('dm-sc-mode', v); };
+  const handleGiftMode = (v) => { setGiftDisplayMode(v); localStorage.setItem('dm-gift-mode', v); };
 
   const filterDanmaku = (list) => {
     return list.filter(msg => {
@@ -492,31 +509,90 @@ export default function DanmakuPage() {
         {/* SC list */}
         <div className="dm-col dm-col-sc">
           <div className="dm-col-header">醒目留言 <span className="dm-col-count">{scList.length}</span></div>
-          <div className="dm-list">
-            {scList.map(msg => (
-              <div key={msg._id} className="dm-sc-row">
-                <div className="dm-sc-header" style={{ background: `#${msg.backgroundColor || '1a78c2'}` }}>
-                  <span className="dm-sc-user">{msg.user?.username}</span>
-                  <span className="dm-sc-price">¥{msg.price}</span>
+          <div className="dm-list" style={{ fontSize: `${fontSize}px` }}>
+            {scList.map(msg => {
+              if (msg.type === 'divider') {
+                return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+              }
+              if (scDisplayMode === 'card') {
+                const colors = getSCColor(msg.price);
+                return (
+                  <div key={msg._id} className="dm-sc-row">
+                    <div className="dm-sc-header" style={{ background: colors.bg }}>
+                      <div className="dm-sc-header-left">
+                        {msg.user?.face && (
+                          <img src={msg.user.face} alt="" className="dm-sc-avatar" referrerPolicy="no-referrer"
+                            onError={e => e.target.style.display = 'none'} />
+                        )}
+                        <span className="dm-sc-user" style={{ color: colors.text }}
+                          onClick={e => handleUserClick(e, msg.user, msg)}>
+                          {msg.user?.username}
+                        </span>
+                      </div>
+                      <span className="dm-sc-price" style={{ color: colors.text }}>¥{msg.price}</span>
+                    </div>
+                    <div className="dm-sc-content" style={{ background: colors.bodyBg }}>{msg.message}</div>
+                  </div>
+                );
+              }
+              // text mode
+              return (
+                <div key={msg._id} className="dm-sc-text-row"
+                  onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
+                  <span className="dm-time">{formatTime(msg.time)}</span>
+                  <span className="dm-sc-text-price" style={{ color: getSCColor(msg.price).bg }}>¥{msg.price}</span>
+                  <span className="dm-gift-user">{msg.user?.username}</span>
+                  <span className="dm-sc-text-msg">{msg.message}</span>
                 </div>
-                <div className="dm-sc-content">{msg.message}</div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
         {/* Gift list */}
         <div className="dm-col dm-col-gift">
           <div className="dm-col-header">礼物 <span className="dm-col-count">{giftList.length}</span></div>
-          <div className="dm-list">
-            {giftList.map(msg => (
-              <div key={msg._id} className="dm-gift-row"
-                onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
-                <span className="dm-gift-user">{msg.user?.username}</span>
-                <span className="dm-gift-name"> 赠送 {msg.giftName}</span>
-                <span className="dm-gift-count"> ×{msg.num}</span>
-              </div>
-            ))}
+          <div className="dm-list" style={{ fontSize: `${fontSize}px` }}>
+            {giftList.map(msg => {
+              if (msg.type === 'divider') {
+                return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+              }
+              if (giftDisplayMode === 'icon') {
+                const isGuard = msg.type === 'guard';
+                const iconSrc = isGuard
+                  ? GUARD_ICONS[msg.guardLevel]
+                  : (msg.giftIconStatic || msg.giftIcon);
+                return (
+                  <div key={msg._id} className="dm-gift-icon-row"
+                    onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
+                    {iconSrc && (
+                      <img className="dm-gift-icon-img" src={iconSrc} alt={msg.giftName}
+                        referrerPolicy="no-referrer" onError={e => e.target.style.display = 'none'} />
+                    )}
+                    <div className="dm-gift-icon-info">
+                      <span className="dm-gift-user">{msg.user?.username}</span>
+                      <span className="dm-gift-name"> {isGuard ? msg.giftName : `赠送 ${msg.giftName}`}</span>
+                      <span className="dm-gift-count"> ×{msg.num}</span>
+                      {msg.coinType === 'gold' && (msg.totalCoin || msg.price) > 0 && (
+                        <span className="dm-gift-icon-price"> ¥{((msg.totalCoin || msg.price) / 1000).toFixed(1).replace(/\.0$/, '')}</span>
+                      )}
+                      {isGuard && msg.price > 0 && (
+                        <span className="dm-gift-icon-price"> ¥{(msg.price / 1000).toFixed(0)}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              }
+              // text mode (default)
+              return (
+                <div key={msg._id} className="dm-gift-row"
+                  onClick={e => msg.user && handleUserClick(e, msg.user, msg)}>
+                  <span className="dm-gift-user">{msg.user?.username}</span>
+                  <span className="dm-gift-name"> 赠送 {msg.giftName}</span>
+                  <span className="dm-gift-count"> ×{msg.num}</span>
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -543,21 +619,61 @@ export default function DanmakuPage() {
           </div>
 
           <div className="dm-settings-group">
-            <div className="dm-settings-label">新弹幕方向</div>
+            <div className="dm-settings-label">显示方向</div>
             <div className="dm-settings-radio-group">
               <label className={`dm-settings-radio${scrollDir === 'up' ? ' active' : ''}`}>
                 <input type="radio" name="scrollDir" value="up"
                   checked={scrollDir === 'up'}
                   onChange={() => handleScrollDir('up')} />
-                <span>↑ 向上滚动</span>
+                <span>向上滚动</span>
                 <span className="dm-settings-radio-hint">新弹幕在底部</span>
               </label>
               <label className={`dm-settings-radio${scrollDir === 'down' ? ' active' : ''}`}>
                 <input type="radio" name="scrollDir" value="down"
                   checked={scrollDir === 'down'}
                   onChange={() => handleScrollDir('down')} />
-                <span>↓ 向下滚动</span>
+                <span>向下滚动</span>
                 <span className="dm-settings-radio-hint">新弹幕在顶部</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="dm-settings-group">
+            <div className="dm-settings-label">SC 显示方式</div>
+            <div className="dm-settings-radio-group">
+              <label className={`dm-settings-radio${scDisplayMode === 'card' ? ' active' : ''}`}>
+                <input type="radio" name="scMode" value="card"
+                  checked={scDisplayMode === 'card'}
+                  onChange={() => handleScMode('card')} />
+                <span>卡片</span>
+                <span className="dm-settings-radio-hint">彩色卡片</span>
+              </label>
+              <label className={`dm-settings-radio${scDisplayMode === 'text' ? ' active' : ''}`}>
+                <input type="radio" name="scMode" value="text"
+                  checked={scDisplayMode === 'text'}
+                  onChange={() => handleScMode('text')} />
+                <span>文字</span>
+                <span className="dm-settings-radio-hint">紧凑文字行</span>
+              </label>
+            </div>
+          </div>
+
+          <div className="dm-settings-group">
+            <div className="dm-settings-label">礼物显示方式</div>
+            <div className="dm-settings-radio-group">
+              <label className={`dm-settings-radio${giftDisplayMode === 'text' ? ' active' : ''}`}>
+                <input type="radio" name="giftMode" value="text"
+                  checked={giftDisplayMode === 'text'}
+                  onChange={() => handleGiftMode('text')} />
+                <span>文字</span>
+                <span className="dm-settings-radio-hint">紧凑文字行</span>
+              </label>
+              <label className={`dm-settings-radio${giftDisplayMode === 'icon' ? ' active' : ''}`}>
+                <input type="radio" name="giftMode" value="icon"
+                  checked={giftDisplayMode === 'icon'}
+                  onChange={() => handleGiftMode('icon')} />
+                <span>图标</span>
+                <span className="dm-settings-radio-hint">含礼物图标</span>
               </label>
             </div>
           </div>

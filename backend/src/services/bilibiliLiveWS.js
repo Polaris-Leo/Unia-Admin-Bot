@@ -229,6 +229,7 @@ export class BilibiliLiveWS {
           this.isLive = true;
           const newSessionId = data.live_time;
           const now = Date.now();
+          const prevSessionId = this.currentSessionId; // 记录变更前的会话，用于判断是否需要插入开始分界线
 
           // 尝试从磁盘恢复 lastSessionId (如果内存中没有)
           if (!this.lastSessionId) {
@@ -237,22 +238,16 @@ export class BilibiliLiveWS {
                 // 只有当磁盘上的最新会话不是当前会话时，才将其视为上一场
                 if (String(lastDiskSession) !== String(newSessionId)) {
                     this.lastSessionId = lastDiskSession;
-                    // 假设上一场结束时间就是现在（为了安全起见，或者我们可以读取文件最后修改时间，但这里主要为了修复数据）
-                    // 如果是为了断流重连，我们需要更精确的时间。但如果是为了修复数据，我们只需要ID。
                 }
              }
           }
 
           // 检查是否可以延续上一场直播 (断流重连逻辑)
-          // 如果有上一场记录，且间隔小于阈值(15分钟)
-          // 注意：如果 lastSessionEndTime 是 0 (刚启动)，则不能延续，除非我们从磁盘读取了最后修改时间
-          // 这里简化逻辑：如果是刚启动，且检测到新会话ID与磁盘最新不同，则认为是新场次，不延续
           if (this.lastSessionId && this.lastSessionEndTime > 0 && (now - this.lastSessionEndTime < this.sessionTimeout)) {
             console.log(`🔄 延续上一场直播会话: ${this.lastSessionId} (间隔: ${Math.floor((now - this.lastSessionEndTime)/1000)}秒)`);
             this.currentSessionId = this.lastSessionId;
           } else {
             // 新的直播场次
-            // 检查是否需要迁移数据 (修复之前的 Bug)
             if (this.lastSessionId && String(this.lastSessionId) !== String(newSessionId)) {
                 console.log(`检测到新场次 ${newSessionId}，正在检查上一场 ${this.lastSessionId} 是否有残留数据...`);
                 await moveStrayData(this.roomId, this.lastSessionId, newSessionId);
@@ -261,9 +256,24 @@ export class BilibiliLiveWS {
             this.currentSessionId = newSessionId;
             this.lastSessionId = newSessionId;
           }
-          
+
           // 更新最后活跃时间
           this.lastSessionEndTime = now;
+
+          // 会话发生变化（含首次检测到直播）时插入"直播开始"分界线
+          if (String(this.currentSessionId) !== String(prevSessionId) && this.currentSessionId) {
+            // 使用 B 站接口返回的开播时间戳（newSessionId = live_time）
+            const liveStartTs = Number(newSessionId);
+            const timeStr = new Date(liveStartTs * 1000).toTimeString().slice(0, 5);
+            const divider = {
+              type: 'divider',
+              content: `直播开始 ${timeStr}`,
+              timestamp: liveStartTs
+            };
+            saveMessage(this.roomId, this.currentSessionId, 'danmaku', divider);
+            if (this.onDanmaku) this.onDanmaku(divider);
+            console.log(`📌 已插入直播开始分界线 (session: ${prevSessionId ?? 'null'} → ${this.currentSessionId}, 开播时间: ${timeStr})`);
+          }
         } else {
           this.isLive = false;
           // 下播状态下，不重置 currentSessionId，以便记录下播后的弹幕
@@ -1024,52 +1034,37 @@ export class BilibiliLiveWS {
     console.log('📨 收到消息:', cmd);
     
     switch (cmd) {
-      case 'PREPARING': // 直播准备中（下播）
+      case 'PREPARING': { // 直播准备中（下播）
         console.log('💤 直播准备中 (PREPARING)');
         this.isLive = false;
-        this.lastSessionEndTime = Date.now(); // 记录下播时间
-        
-        // 记录直播结束分界线
+        this.lastSessionEndTime = Date.now();
+
         if (this.currentSessionId) {
+          const timeStr = new Date().toTimeString().slice(0, 5);
           const divider = {
             type: 'divider',
-            content: '直播已结束',
+            content: `直播结束 ${timeStr}`,
             timestamp: Math.floor(Date.now() / 1000)
           };
           saveMessage(this.roomId, this.currentSessionId, 'danmaku', divider);
-          // 实时推送到前端
           if (this.onDanmaku) this.onDanmaku(divider);
           // 不重置 currentSessionId，以便记录下播后的弹幕
         }
-        
+
         if (this.onLiveStatus) this.onLiveStatus({ liveStatus: 0, liveStartTime: 0 });
         break;
+      }
 
-      case 'LIVE': // 直播开始
+      case 'LIVE': { // 直播开始
         console.log('▶️ 直播开始 (LIVE)');
         this.isLive = true;
-        // 延迟获取状态，确保API更新
+        // 延迟获取状态，确保 API 已更新；getLiveStatus 内部会处理分界线插入
         setTimeout(async () => {
-          const oldSessionId = this.currentSessionId;
           const status = await this.getLiveStatus();
-          
-          // 如果产生了新的会话ID，说明是新的一场直播
-          if (this.currentSessionId && this.currentSessionId !== oldSessionId) {
-             const divider = {
-                type: 'divider',
-                content: '直播已开始',
-                timestamp: Math.floor(Date.now() / 1000)
-             };
-             saveMessage(this.roomId, this.currentSessionId, 'danmaku', divider);
-             // 实时推送到前端
-             if (this.onDanmaku) this.onDanmaku(divider);
-          }
-          
-          if (status && this.onLiveStatus) {
-            this.onLiveStatus(status);
-          }
+          if (status && this.onLiveStatus) this.onLiveStatus(status);
         }, 2000);
         break;
+      }
 
       case 'DANMU_MSG': // 弹幕
         const info = data.info;

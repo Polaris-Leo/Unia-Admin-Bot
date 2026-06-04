@@ -129,7 +129,7 @@
   overflow: hidden;
 }
 .dm-col:last-child { border-right: none; }
-.dm-col-danmaku { flex: 3; position: relative; }
+.dm-col-danmaku { flex: 2; position: relative; }
 .dm-col-sc, .dm-col-gift { flex: 1; }
 
 .dm-col-header {
@@ -256,7 +256,7 @@
   z-index: 10;
 }
 
-/* SC */
+/* SC — 卡片模式 */
 .dm-sc-row {
   margin: 4px 8px;
   border-radius: var(--radius-sm);
@@ -264,19 +264,53 @@
   border: 1px solid var(--border);
 }
 .dm-sc-header {
-  padding: 4px 8px;
+  padding: 0.28em 0.6em;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 6px;
 }
-.dm-sc-user { font-size: 12px; font-weight: 600; color: #fff; }
-.dm-sc-price { font-size: 12px; color: #fff; font-weight: 700; }
-.dm-sc-content { padding: 6px 8px; font-size: 12px; color: var(--text); background: var(--bg-3); }
+.dm-sc-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0.4em;
+  min-width: 0;
+}
+.dm-sc-avatar {
+  width: 1.4em; height: 1.4em;
+  border-radius: 50%;
+  flex-shrink: 0;
+  object-fit: cover;
+}
+.dm-sc-user {
+  font-weight: 600;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 8em;
+}
+.dm-sc-user:hover { opacity: 0.8; }
+.dm-sc-price { font-weight: 700; flex-shrink: 0; }
+.dm-sc-content { padding: 0.4em 0.6em; color: var(--text); word-break: break-all; }
 
-/* Gift */
+/* SC — 文字模式 */
+.dm-sc-text-row {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.3em;
+  padding: 0.2em 10px;
+  cursor: pointer;
+  color: var(--text-2);
+}
+.dm-sc-text-row:hover { background: var(--bg-3); }
+.dm-sc-text-price { font-weight: 700; flex-shrink: 0; }
+.dm-sc-text-msg { color: var(--text); flex: 1; word-break: break-all; }
+
+/* Gift — 文字模式 */
 .dm-gift-row {
-  padding: 4px 10px;
-  font-size: 12px;
+  padding: 0.2em 10px;
   color: var(--text-2);
   cursor: pointer;
 }
@@ -284,6 +318,30 @@
 .dm-gift-user { color: var(--text); font-weight: 500; }
 .dm-gift-name { color: var(--warning); }
 .dm-gift-count { color: var(--text-3); }
+
+/* Gift — 图标模式 */
+.dm-gift-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5em;
+  padding: 0.25em 10px;
+  cursor: pointer;
+}
+.dm-gift-icon-row:hover { background: var(--bg-3); }
+.dm-gift-icon-img {
+  width: 2em; height: 2em;
+  object-fit: contain;
+  flex-shrink: 0;
+  border-radius: 4px;
+}
+.dm-gift-icon-info {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 0.2em;
+  min-width: 0;
+}
+.dm-gift-icon-price { color: var(--warning); font-weight: 600; }
 
 /* ── 设置按钮 ── */
 .dm-settings-btn {
@@ -387,38 +445,47 @@
 
 .dm-settings-radio-group {
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  flex-direction: row;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
 }
 
 .dm-settings-radio {
+  flex: 1;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm);
-  border: 1px solid var(--border);
-  background: var(--bg-3);
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 8px;
+  border-radius: 0;
+  border: none;
+  border-right: 1px solid var(--border);
+  background: transparent;
   cursor: pointer;
-  transition: border-color 0.15s, background 0.15s;
-  font-size: 13px;
+  transition: background 0.15s, color 0.15s;
+  font-size: 12px;
+  font-weight: 500;
   color: var(--text-2);
-  position: relative;
+  line-height: 1.2;
+  text-align: center;
 }
+.dm-settings-radio:last-child { border-right: none; }
 .dm-settings-radio input { display: none; }
-.dm-settings-radio:hover { border-color: var(--text-3); color: var(--text); }
+.dm-settings-radio:hover { background: var(--bg-3); color: var(--text); }
 .dm-settings-radio.active {
-  border-color: var(--primary);
   background: var(--primary-dim);
-  color: var(--text);
+  color: var(--primary);
+  font-weight: 600;
 }
 
 .dm-settings-radio-hint {
   font-size: 10px;
   color: var(--text-3);
-  margin-left: auto;
+  font-weight: 400;
 }
-.dm-settings-radio.active .dm-settings-radio-hint { color: var(--primary); opacity: 0.8; }
+.dm-settings-radio.active .dm-settings-radio-hint { color: var(--primary); opacity: 0.75; }
 
 .dm-settings-mask {
   position: fixed;

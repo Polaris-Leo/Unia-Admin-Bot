@@ -12,7 +12,7 @@
   flex-direction: column;
   border-right: 1px solid var(--border);
   background: var(--bg-2);
-  overflow: hidden;
+  position: relative;
 }
 
 .history-sidebar-header {
@@ -296,6 +296,43 @@ input[type="date"].hf-input {
   margin-top: 2px;
 }
 .hf-btn-export:hover { background: var(--primary); color: #fff; }
+
+/* ── 设置按钮（左下角）── */
+.hf-settings-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  padding: 8px 12px;
+  border: none;
+  border-top: 1px solid var(--border);
+  background: var(--bg-2);
+  color: var(--text-3);
+  font-size: 12px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  text-align: left;
+}
+.hf-settings-btn:hover { background: var(--bg-3); color: var(--text-2); }
+.hf-settings-btn.active { color: var(--primary); background: var(--primary-dim); }
+
+/* ── 设置弹出面板（从底部向上弹出，覆盖筛选栏）── */
+.hf-settings-popup {
+  position: absolute;
+  bottom: 37px; /* 与按钮高度对齐 */
+  left: 0;
+  right: 0;
+  background: var(--bg-2);
+  border-top: 1px solid var(--border);
+  border-right: 1px solid var(--border);
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.2);
+  z-index: 20;
+}
 
 /* ── 导出弹窗 ── */
 .hx-modal-overlay {
