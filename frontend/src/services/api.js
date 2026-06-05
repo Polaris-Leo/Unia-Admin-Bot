@@ -1,8 +1,43 @@
 import axios from 'axios';
 
+// 在 Electron 远程模式下，backendUrl 通过 URL 参数传入并存入 localStorage
+// 本地模式必须清掉旧的 backendUrl，避免从远程模式切回本地后 API/WS 仍然打到旧服务器。
+function initBackendUrl() {
+  if (typeof window === 'undefined') return;
+  const params = new URLSearchParams(window.location.search);
+  const mode = params.get('mode');
+  const url = params.get('backendUrl');
+  if (url) {
+    const clean = url.replace(/\/$/, '');
+    localStorage.setItem('backendUrl', clean);
+    // 持久化到 Electron 配置，确保整页刷新后仍能恢复
+    if (window.electronAPI) {
+      window.electronAPI.loadConfig()
+        .then(cfg => window.electronAPI.saveConfig({ ...cfg, backendUrl: clean }))
+        .catch(() => {});
+    }
+  } else if (window.electronAPI && mode === 'local') {
+    localStorage.removeItem('backendUrl');
+    window.electronAPI.loadConfig()
+      .then(cfg => window.electronAPI.saveConfig({ ...cfg, backendUrl: null }))
+      .catch(() => {});
+  }
+}
+initBackendUrl();
+
+function getBaseURL() {
+  // Electron 环境且配置了远程地址时，使用绝对 URL
+  if (typeof window !== 'undefined' && window.electronAPI) {
+    const backendUrl = localStorage.getItem('backendUrl');
+    if (backendUrl) return backendUrl.replace(/\/$/, '') + '/api';
+  }
+  return '/api';
+}
+
 const api = axios.create({ baseURL: '/api' });
 
 api.interceptors.request.use(config => {
+  config.baseURL = getBaseURL();
   const token = localStorage.getItem('token');
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
@@ -13,7 +48,15 @@ api.interceptors.response.use(
   err => {
     if (err.response?.status === 401) {
       localStorage.removeItem('token');
-      window.location.href = '/login';
+      if (window.electronAPI) {
+        window.electronAPI.loadConfig()
+          .then(cfg => window.electronAPI.saveConfig({ ...cfg, authToken: null }))
+          .catch(() => {});
+      }
+      // 用 hash 跳转而非整页刷新，避免 URL query params 丢失导致 backendUrl 无法从 URL 恢复
+      if (window.location.pathname !== '/login') {
+        window.location.replace('/login');
+      }
     }
     return Promise.reject(err);
   }

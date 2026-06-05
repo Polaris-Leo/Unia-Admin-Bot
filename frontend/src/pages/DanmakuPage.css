@@ -415,6 +415,15 @@
   gap: 24px;
 }
 
+.dm-settings-section-title {
+  margin: 2px 0 -10px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  color: var(--primary);
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .dm-settings-group {
   display: flex;
   flex-direction: column;
