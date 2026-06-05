@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createRoot } from 'react-dom/client';
 import { useNavigate } from 'react-router-dom';
-import { startDanmaku, stopDanmaku, getDanmakuSession } from '../services/api';
+import { startDanmaku, stopDanmaku, getDanmakuSession, silentUser } from '../services/api';
 import api from '../services/api';
 import UserActionPopup from '../components/UserActionPopup';
 import CustomSelect from '../components/CustomSelect';
@@ -39,6 +40,121 @@ function formatDuration(secs) {
   return [h, m, s].map(v => String(v).padStart(2, '0')).join(':');
 }
 
+function renderEmotes(content, emots) {
+  if (!content) return null;
+  if (!emots) return content;
+  const parts = content.split(/(\[+[^\]]+\]+)/);
+  return parts.map((part, i) => {
+    const emot = part.startsWith('[') && part.endsWith(']') ? emots[part] : null;
+    if (emot) {
+      return (
+        <img key={i} src={emot.url} alt={part} title={part}
+          className={isSmallEmote(emot.url) ? 'dm-emote' : 'dm-emote dm-emote-big'}
+          referrerPolicy="no-referrer" />
+      );
+    }
+    return <span key={i}>{part}</span>;
+  });
+}
+
+function copySheetsTo(pipDoc) {
+  document.querySelectorAll('style').forEach(el => {
+    const s = pipDoc.createElement('style');
+    s.textContent = el.textContent;
+    pipDoc.head.appendChild(s);
+  });
+  document.querySelectorAll('link[rel="stylesheet"]').forEach(el => {
+    pipDoc.head.appendChild(el.cloneNode(true));
+  });
+  const base = pipDoc.createElement('style');
+  base.textContent = [
+    '*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }',
+    "html, body { height: 100%; overflow: hidden; }",
+    "body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }",
+    'button { cursor: pointer; border: none; outline: none; font-family: inherit; font-size: 13px; }',
+  ].join('\n');
+  pipDoc.head.appendChild(base);
+}
+
+function PipView({ danmakuList, roomId, fontSize, onBanSuccess, onFilterUser, onViewHistory }) {
+  const listRef = useRef(null);
+  const isAutoScrollRef = useRef(true);
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
+  const [selectedMsg, setSelectedMsg] = useState(null);
+
+  useEffect(() => {
+    if (isAutoScrollRef.current && listRef.current) {
+      listRef.current.scrollTop = listRef.current.scrollHeight;
+    }
+  }, [danmakuList]);
+
+  const handleScroll = () => {
+    const el = listRef.current;
+    if (!el) return;
+    isAutoScrollRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+  };
+
+  const handleUserClick = (e, user, msg) => {
+    e.stopPropagation();
+    const win = e.target.ownerDocument.defaultView || window;
+    const rect = e.currentTarget.getBoundingClientRect();
+    let x = rect.left;
+    let y = rect.bottom + 6;
+    if (x + 280 > win.innerWidth) x = win.innerWidth - 290;
+    if (y + 360 > win.innerHeight) y = Math.max(10, rect.top - 360);
+    setPopupPos({ x, y });
+    setSelectedUser(user);
+    setSelectedMsg(msg);
+  };
+
+  const recent = danmakuList.slice(-150);
+
+  return (
+    <div className="pip-view">
+      <div className="pip-header">
+        <span className="pip-title">弹幕监控</span>
+        <span className="pip-count">{danmakuList.length} 条</span>
+      </div>
+      <div className="pip-list" ref={listRef} onScroll={handleScroll}
+        style={{ fontSize: `${fontSize}px` }}>
+        {recent.map(msg => {
+          if (msg.type === 'divider') {
+            return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+          }
+          return (
+            <div key={msg._id} className="dm-row pip-row">
+              <span className="dm-time">{formatTime(msg.timestamp)}</span>
+              <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
+                {msg.user?.guardLevel > 0 && (
+                  <span className="dm-guard-badge"
+                    style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
+                    {GUARD_LABELS[msg.user.guardLevel]}
+                  </span>
+                )}
+                <span className="dm-username">{msg.user?.username}</span>
+              </div>
+              <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
+            </div>
+          );
+        })}
+      </div>
+      {selectedUser && (
+        <UserActionPopup
+          user={selectedUser}
+          msg={selectedMsg}
+          position={popupPos}
+          roomId={roomId}
+          onClose={() => setSelectedUser(null)}
+          onBanSuccess={(uid) => { onBanSuccess?.(uid); setSelectedUser(null); }}
+          onFilterUser={uid => { onFilterUser?.(uid); setSelectedUser(null); }}
+          onViewHistory={uid => { onViewHistory?.(uid); setSelectedUser(null); }}
+        />
+      )}
+    </div>
+  );
+}
+
 export default function DanmakuPage() {
   const navigate = useNavigate();
   const [roomId, setRoomId] = useState('');
@@ -69,6 +185,10 @@ export default function DanmakuPage() {
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
   const [selectedMsg, setSelectedMsg] = useState(null);
   const [bannedUids, setBannedUids] = useState(new Set());
+
+  const [pipOpen, setPipOpen] = useState(false);
+  const pipRootRef = useRef(null);
+  const pipWindowRef = useRef(null);
 
   // Settings
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -302,9 +422,9 @@ export default function DanmakuPage() {
     setSelectedMsg(msg);
   };
 
-  const handleBanSuccess = (uid) => {
+  const handleBanSuccess = useCallback((uid) => {
     setBannedUids(prev => new Set([...prev, uid]));
-  };
+  }, []);
 
   const handleFontSize = (v) => {
     setFontSize(v);
@@ -324,6 +444,75 @@ export default function DanmakuPage() {
 
   const handleScMode = (v) => { setScDisplayMode(v); localStorage.setItem('dm-sc-mode', v); };
   const handleGiftMode = (v) => { setGiftDisplayMode(v); localStorage.setItem('dm-gift-mode', v); };
+
+  const openPip = async () => {
+    if (!('documentPictureInPicture' in window)) {
+      alert('当前浏览器不支持此功能，请使用 Chrome 116+ 或 Edge');
+      return;
+    }
+    if (pipWindowRef.current) {
+      pipWindowRef.current.close();
+      return;
+    }
+    try {
+      const pipWin = await window.documentPictureInPicture.requestWindow({
+        width: 360,
+        height: 560,
+        disallowReturnToOpener: false,
+      });
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      pipWin.document.documentElement.setAttribute('data-theme', theme);
+      copySheetsTo(pipWin.document);
+
+      const container = pipWin.document.createElement('div');
+      container.style.cssText = 'height:100%;display:flex;flex-direction:column;';
+      pipWin.document.body.appendChild(container);
+
+      const root = createRoot(container);
+      pipRootRef.current = root;
+      pipWindowRef.current = pipWin;
+      setPipOpen(true);
+
+      root.render(
+        <PipView
+          danmakuList={danmakuList}
+          roomId={roomId}
+          fontSize={fontSize}
+          onBanSuccess={handleBanSuccess}
+          onFilterUser={uid => { setFilterUid(uid); }}
+          onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
+        />
+      );
+
+      const themeObserver = new MutationObserver(() => {
+        const t = document.documentElement.getAttribute('data-theme') || 'light';
+        pipWin.document.documentElement.setAttribute('data-theme', t);
+      });
+      themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
+      pipWin.addEventListener('pagehide', () => {
+        themeObserver.disconnect();
+        root.unmount();
+        pipRootRef.current = null;
+        pipWindowRef.current = null;
+        setPipOpen(false);
+      });
+    } catch {}
+  };
+
+  useEffect(() => {
+    if (!pipRootRef.current) return;
+    pipRootRef.current.render(
+      <PipView
+        danmakuList={danmakuList}
+        roomId={roomId}
+        fontSize={fontSize}
+        onBanSuccess={handleBanSuccess}
+        onFilterUser={uid => { setFilterUid(uid); }}
+        onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
+      />
+    );
+  }, [danmakuList, roomId, fontSize, handleBanSuccess, navigate]);
 
   const filterDanmaku = (list) => {
     return list.filter(msg => {
@@ -426,8 +615,18 @@ export default function DanmakuPage() {
           )}
         </div>
 
-        {/* 右：设置按钮 */}
+        {/* 右：工具按钮 */}
         <div className="dm-right">
+          <button
+            className={`dm-pip-btn${pipOpen ? ' active' : ''}`}
+            onClick={openPip}
+            title={pipOpen ? '关闭悬浮窗' : '弹出悬浮窗'}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="2" y="4" width="20" height="14" rx="2" ry="2"/>
+              <rect x="11" y="11" width="10" height="6" rx="1" fill="currentColor" stroke="none"/>
+            </svg>
+          </button>
           <button
             className={`dm-settings-btn${settingsOpen ? ' active' : ''}`}
             onClick={() => setSettingsOpen(v => !v)}

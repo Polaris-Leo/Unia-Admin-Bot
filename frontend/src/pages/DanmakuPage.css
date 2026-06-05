@@ -517,3 +517,82 @@
 @keyframes dm-spin {
   to { transform: rotate(360deg); }
 }
+
+/* ── PiP 按钮 ── */
+.dm-pip-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--text-3);
+  transition: background 0.15s, color 0.15s, border-color 0.15s;
+}
+.dm-pip-btn:hover,
+.dm-pip-btn.active {
+  background: var(--bg-3);
+  border-color: var(--border);
+  color: var(--primary);
+}
+
+/* ── PiP 悬浮窗内容 ── */
+.pip-view {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  overflow: hidden;
+}
+
+.pip-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  background: var(--bg-2);
+  border-bottom: 1px solid var(--border);
+  flex-shrink: 0;
+}
+
+.pip-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-2);
+}
+
+.pip-count {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.pip-toast {
+  position: fixed;
+  top: 36px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-2);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 6px 14px;
+  font-size: 12px;
+  color: var(--text);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.25);
+  z-index: 100;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.pip-list {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 4px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+.pip-row { cursor: pointer; }
