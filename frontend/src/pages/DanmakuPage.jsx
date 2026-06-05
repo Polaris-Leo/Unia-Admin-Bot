@@ -69,21 +69,14 @@ function copySheetsTo(pipDoc) {
   const base = pipDoc.createElement('style');
   base.textContent = [
     '*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }',
-    'html, body { height: 100%; overflow: hidden; background: transparent !important; }',
+    'html, body { height: 100%; overflow: hidden; }',
     "body { color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }",
     'button { cursor: pointer; border: none; outline: none; font-family: inherit; font-size: 13px; }',
   ].join('\n');
   pipDoc.head.appendChild(base);
-  // RGB 分量变量，配合 rgba() 实现仅背景透明、文字不透明
-  const rgb = pipDoc.createElement('style');
-  rgb.textContent = [
-    ':root{--pip-alpha:1;--bg-rgb:240,242,245;--bg-2-rgb:255,255,255;--bg-3-rgb:245,245,245;}',
-    ':root[data-theme="dark"]{--bg-rgb:15,15,15;--bg-2-rgb:26,26,26;--bg-3-rgb:36,36,36;}',
-  ].join('\n');
-  pipDoc.head.appendChild(rgb);
 }
 
-function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilterUser, onViewHistory }) {
+function PipView({ danmakuList, roomId, fontSize, onBanSuccess, onFilterUser, onViewHistory }) {
   const listRef = useRef(null);
   const isAutoScrollRef = useRef(true);
   const prevLengthRef = useRef(0);
@@ -143,7 +136,7 @@ function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilte
   const recent = danmakuList.slice(-150);
 
   return (
-    <div className="pip-view" style={{ '--pip-alpha': opacity }}>
+    <div className="pip-view">
       <div className="pip-header">
         <span className="pip-title">弹幕监控</span>
         <span className="pip-count">{danmakuList.length} 条</span>
@@ -226,7 +219,6 @@ export default function DanmakuPage() {
   const [bannedUids, setBannedUids] = useState(new Set());
 
   const [pipOpen, setPipOpen] = useState(false);
-  const [pipOpacity, setPipOpacity] = useState(() => Number(localStorage.getItem('pip-opacity')) || 1);
   const pipRootRef = useRef(null);
   const pipWindowRef = useRef(null);
 
@@ -484,8 +476,6 @@ export default function DanmakuPage() {
 
   const handleScMode = (v) => { setScDisplayMode(v); localStorage.setItem('dm-sc-mode', v); };
   const handleGiftMode = (v) => { setGiftDisplayMode(v); localStorage.setItem('dm-gift-mode', v); };
-  const handlePipOpacity = (v) => { setPipOpacity(v); localStorage.setItem('pip-opacity', v); };
-
   const openPip = async () => {
     if (!('documentPictureInPicture' in window)) {
       alert('当前浏览器不支持此功能，请使用 Chrome 116+ 或 Edge');
@@ -519,7 +509,6 @@ export default function DanmakuPage() {
           danmakuList={danmakuList}
           roomId={roomId}
           fontSize={fontSize}
-          opacity={pipOpacity}
           onBanSuccess={handleBanSuccess}
           onFilterUser={uid => { setFilterUid(uid); }}
           onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
@@ -549,13 +538,12 @@ export default function DanmakuPage() {
         danmakuList={danmakuList}
         roomId={roomId}
         fontSize={fontSize}
-        opacity={pipOpacity}
         onBanSuccess={handleBanSuccess}
         onFilterUser={uid => { setFilterUid(uid); }}
         onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
       />
     );
-  }, [danmakuList, roomId, fontSize, pipOpacity, handleBanSuccess, navigate]);
+  }, [danmakuList, roomId, fontSize, handleBanSuccess, navigate]);
 
   const filterDanmaku = (list) => {
     return list.filter(msg => {
@@ -915,18 +903,6 @@ export default function DanmakuPage() {
             </div>
           </div>
 
-          <div className="dm-settings-group">
-            <div className="dm-settings-label">
-              悬浮窗透明度
-              <span className="dm-settings-value">{Math.round(pipOpacity * 100)}%</span>
-            </div>
-            <input
-              type="range" min="0.2" max="1" step="0.05"
-              value={pipOpacity}
-              onChange={e => handlePipOpacity(Number(e.target.value))}
-              className="dm-settings-slider"
-            />
-          </div>
         </div>
       </div>
       {settingsOpen && <div className="dm-settings-mask" onClick={() => setSettingsOpen(false)} />}
