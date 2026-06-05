@@ -22,11 +22,25 @@
 
 ## 使用方法
 
+### 方式一：直接运行（开发 / 自用）
+
 ```bash
 cd electron-overlay
-npm install        # 首次安装 Electron（约 200MB）
+npm install        # 首次安装依赖（约 200MB）
 npm start          # 启动悬浮窗
 ```
+
+### 方式二：打包为 .exe 分发给他人
+
+```bash
+cd electron-overlay
+npm install        # 安装依赖（含 electron-builder）
+npm run dist       # 打包，输出到 dist/Unia-Overlay.exe
+```
+
+打包完成后 `dist/Unia-Overlay.exe` 即为独立便携版，**无需安装 Node.js 或任何运行环境**，直接双击运行。文件大小约 150–180 MB（内含 Chromium + Node.js 运行时）。
+
+---
 
 首次启动显示登录界面，填写：
 - **服务器地址** — Unia 后端地址，如 `http://localhost:3001`
