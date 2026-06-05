@@ -74,6 +74,13 @@ function copySheetsTo(pipDoc) {
     'button { cursor: pointer; border: none; outline: none; font-family: inherit; font-size: 13px; }',
   ].join('\n');
   pipDoc.head.appendChild(base);
+  // RGB 分量变量，配合 rgba() 实现仅背景透明、文字不透明
+  const rgb = pipDoc.createElement('style');
+  rgb.textContent = [
+    ':root{--pip-alpha:1;--bg-rgb:240,242,245;--bg-2-rgb:255,255,255;--bg-3-rgb:245,245,245;}',
+    ':root[data-theme="dark"]{--bg-rgb:15,15,15;--bg-2-rgb:26,26,26;--bg-3-rgb:36,36,36;}',
+  ].join('\n');
+  pipDoc.head.appendChild(rgb);
 }
 
 function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilterUser, onViewHistory }) {
@@ -136,42 +143,40 @@ function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilte
   const recent = danmakuList.slice(-150);
 
   return (
-    <div className="pip-view">
-      <div className="pip-inner" style={{ opacity }}>
-        <div className="pip-header">
-          <span className="pip-title">弹幕监控</span>
-          <span className="pip-count">{danmakuList.length} 条</span>
-        </div>
-        <div className="pip-list-wrap">
-          <div className="pip-list" ref={listRef} onScroll={handleScroll}
-            style={{ fontSize: `${fontSize}px` }}>
-            {recent.map(msg => {
-              if (msg.type === 'divider') {
-                return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
-              }
-              return (
-                <div key={msg._id} className="dm-row pip-row">
-                  <span className="dm-time">{formatTime(msg.timestamp)}</span>
-                  <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
-                    {msg.user?.guardLevel > 0 && (
-                      <span className="dm-guard-badge"
-                        style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
-                        {GUARD_LABELS[msg.user.guardLevel]}
-                      </span>
-                    )}
-                    <span className="dm-username">{msg.user?.username}</span>
-                  </div>
-                  <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
+    <div className="pip-view" style={{ '--pip-alpha': opacity }}>
+      <div className="pip-header">
+        <span className="pip-title">弹幕监控</span>
+        <span className="pip-count">{danmakuList.length} 条</span>
+      </div>
+      <div className="pip-list-wrap">
+        <div className="pip-list" ref={listRef} onScroll={handleScroll}
+          style={{ fontSize: `${fontSize}px` }}>
+          {recent.map(msg => {
+            if (msg.type === 'divider') {
+              return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+            }
+            return (
+              <div key={msg._id} className="dm-row pip-row">
+                <span className="dm-time">{formatTime(msg.timestamp)}</span>
+                <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
+                  {msg.user?.guardLevel > 0 && (
+                    <span className="dm-guard-badge"
+                      style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
+                      {GUARD_LABELS[msg.user.guardLevel]}
+                    </span>
+                  )}
+                  <span className="dm-username">{msg.user?.username}</span>
                 </div>
-              );
-            })}
-          </div>
-          {!isAutoScroll && unreadCount > 0 && (
-            <button className="pip-new-msg-btn" onClick={scrollToBottom}>
-              ↓ {unreadCount} 条新消息
-            </button>
-          )}
+                <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
+              </div>
+            );
+          })}
         </div>
+        {!isAutoScroll && unreadCount > 0 && (
+          <button className="pip-new-msg-btn" onClick={scrollToBottom}>
+            ↓ {unreadCount} 条新消息
+          </button>
+        )}
       </div>
       {selectedUser && (
         <UserActionPopup

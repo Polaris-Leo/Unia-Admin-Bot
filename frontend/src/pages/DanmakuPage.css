@@ -543,17 +543,10 @@
   display: flex;
   flex-direction: column;
   height: 100%;
-  background: transparent;
+  /* background 由 --pip-alpha 驱动，透明时可透出 OS 底层窗口 */
+  background: rgba(var(--bg-rgb, 240,242,245), var(--pip-alpha, 1));
   overflow: hidden;
   position: relative;
-}
-
-.pip-inner {
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  background: var(--bg);
-  overflow: hidden;
 }
 
 .pip-header {
@@ -561,7 +554,7 @@
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: var(--bg-2);
+  background: rgba(var(--bg-2-rgb, 255,255,255), var(--pip-alpha, 1));
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
 }
@@ -592,6 +585,10 @@
   padding: 4px 0;
   scrollbar-width: thin;
   scrollbar-color: var(--border) transparent;
+}
+
+.pip-view .dm-row:hover {
+  background: rgba(var(--bg-3-rgb, 245,245,245), var(--pip-alpha, 1));
 }
 
 .pip-new-msg-btn {
