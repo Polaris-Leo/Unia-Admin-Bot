@@ -134,43 +134,44 @@ function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilte
   };
 
   const recent = danmakuList.slice(-150);
-  const bgPct = `${Math.round(opacity * 100)}%`;
 
   return (
-    <div className="pip-view" style={{ '--pip-bg-pct': bgPct }}>
-      <div className="pip-header">
-        <span className="pip-title">弹幕监控</span>
-        <span className="pip-count">{danmakuList.length} 条</span>
-      </div>
-      <div className="pip-list-wrap">
-        <div className="pip-list" ref={listRef} onScroll={handleScroll}
-          style={{ fontSize: `${fontSize}px` }}>
-          {recent.map(msg => {
-            if (msg.type === 'divider') {
-              return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
-            }
-            return (
-              <div key={msg._id} className="dm-row pip-row">
-                <span className="dm-time">{formatTime(msg.timestamp)}</span>
-                <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
-                  {msg.user?.guardLevel > 0 && (
-                    <span className="dm-guard-badge"
-                      style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
-                      {GUARD_LABELS[msg.user.guardLevel]}
-                    </span>
-                  )}
-                  <span className="dm-username">{msg.user?.username}</span>
-                </div>
-                <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
-              </div>
-            );
-          })}
+    <div className="pip-view">
+      <div className="pip-inner" style={{ opacity }}>
+        <div className="pip-header">
+          <span className="pip-title">弹幕监控</span>
+          <span className="pip-count">{danmakuList.length} 条</span>
         </div>
-        {!isAutoScroll && unreadCount > 0 && (
-          <button className="pip-new-msg-btn" onClick={scrollToBottom}>
-            ↓ {unreadCount} 条新消息
-          </button>
-        )}
+        <div className="pip-list-wrap">
+          <div className="pip-list" ref={listRef} onScroll={handleScroll}
+            style={{ fontSize: `${fontSize}px` }}>
+            {recent.map(msg => {
+              if (msg.type === 'divider') {
+                return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+              }
+              return (
+                <div key={msg._id} className="dm-row pip-row">
+                  <span className="dm-time">{formatTime(msg.timestamp)}</span>
+                  <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
+                    {msg.user?.guardLevel > 0 && (
+                      <span className="dm-guard-badge"
+                        style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
+                        {GUARD_LABELS[msg.user.guardLevel]}
+                      </span>
+                    )}
+                    <span className="dm-username">{msg.user?.username}</span>
+                  </div>
+                  <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
+                </div>
+              );
+            })}
+          </div>
+          {!isAutoScroll && unreadCount > 0 && (
+            <button className="pip-new-msg-btn" onClick={scrollToBottom}>
+              ↓ {unreadCount} 条新消息
+            </button>
+          )}
+        </div>
       </div>
       {selectedUser && (
         <UserActionPopup
