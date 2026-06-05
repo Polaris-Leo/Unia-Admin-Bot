@@ -1,0 +1,12 @@
+{
+  "name": "unia-overlay",
+  "version": "1.0.0",
+  "description": "Unia 弹幕透明悬浮窗（Electron）",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron ."
+  },
+  "dependencies": {
+    "electron": "^32.0.0"
+  }
+}
