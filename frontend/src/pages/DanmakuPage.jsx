@@ -69,30 +69,55 @@ function copySheetsTo(pipDoc) {
   const base = pipDoc.createElement('style');
   base.textContent = [
     '*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }',
-    "html, body { height: 100%; overflow: hidden; }",
-    "body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }",
+    'html, body { height: 100%; overflow: hidden; background: transparent !important; }',
+    "body { color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif; font-size: 14px; line-height: 1.5; }",
     'button { cursor: pointer; border: none; outline: none; font-family: inherit; font-size: 13px; }',
   ].join('\n');
   pipDoc.head.appendChild(base);
 }
 
-function PipView({ danmakuList, roomId, fontSize, onBanSuccess, onFilterUser, onViewHistory }) {
+function PipView({ danmakuList, roomId, fontSize, opacity, onBanSuccess, onFilterUser, onViewHistory }) {
   const listRef = useRef(null);
   const isAutoScrollRef = useRef(true);
+  const prevLengthRef = useRef(0);
+  const [isAutoScroll, setIsAutoScroll] = useState(true);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [selectedUser, setSelectedUser] = useState(null);
   const [popupPos, setPopupPos] = useState({ x: 0, y: 0 });
   const [selectedMsg, setSelectedMsg] = useState(null);
 
   useEffect(() => {
+    const prev = prevLengthRef.current;
+    const curr = danmakuList.length;
+    prevLengthRef.current = curr;
+    if (curr < prev) {
+      // 列表被重置（断线重连）
+      setUnreadCount(0);
+      isAutoScrollRef.current = true;
+      setIsAutoScroll(true);
+      return;
+    }
     if (isAutoScrollRef.current && listRef.current) {
       listRef.current.scrollTop = listRef.current.scrollHeight;
+    } else if (curr > prev) {
+      setUnreadCount(c => c + (curr - prev));
     }
   }, [danmakuList]);
 
   const handleScroll = () => {
     const el = listRef.current;
     if (!el) return;
-    isAutoScrollRef.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    isAutoScrollRef.current = atBottom;
+    setIsAutoScroll(atBottom);
+    if (atBottom) setUnreadCount(0);
+  };
+
+  const scrollToBottom = () => {
+    if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    isAutoScrollRef.current = true;
+    setIsAutoScroll(true);
+    setUnreadCount(0);
   };
 
   const handleUserClick = (e, user, msg) => {
@@ -109,35 +134,43 @@ function PipView({ danmakuList, roomId, fontSize, onBanSuccess, onFilterUser, on
   };
 
   const recent = danmakuList.slice(-150);
+  const bgPct = `${Math.round(opacity * 100)}%`;
 
   return (
-    <div className="pip-view">
+    <div className="pip-view" style={{ '--pip-bg-pct': bgPct }}>
       <div className="pip-header">
         <span className="pip-title">弹幕监控</span>
         <span className="pip-count">{danmakuList.length} 条</span>
       </div>
-      <div className="pip-list" ref={listRef} onScroll={handleScroll}
-        style={{ fontSize: `${fontSize}px` }}>
-        {recent.map(msg => {
-          if (msg.type === 'divider') {
-            return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
-          }
-          return (
-            <div key={msg._id} className="dm-row pip-row">
-              <span className="dm-time">{formatTime(msg.timestamp)}</span>
-              <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
-                {msg.user?.guardLevel > 0 && (
-                  <span className="dm-guard-badge"
-                    style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
-                    {GUARD_LABELS[msg.user.guardLevel]}
-                  </span>
-                )}
-                <span className="dm-username">{msg.user?.username}</span>
+      <div className="pip-list-wrap">
+        <div className="pip-list" ref={listRef} onScroll={handleScroll}
+          style={{ fontSize: `${fontSize}px` }}>
+          {recent.map(msg => {
+            if (msg.type === 'divider') {
+              return <div key={msg._id} className="dm-divider"><span>{msg.content}</span></div>;
+            }
+            return (
+              <div key={msg._id} className="dm-row pip-row">
+                <span className="dm-time">{formatTime(msg.timestamp)}</span>
+                <div className="dm-user" onClick={e => handleUserClick(e, msg.user, msg)}>
+                  {msg.user?.guardLevel > 0 && (
+                    <span className="dm-guard-badge"
+                      style={{ background: GUARD_COLORS[msg.user.guardLevel] }}>
+                      {GUARD_LABELS[msg.user.guardLevel]}
+                    </span>
+                  )}
+                  <span className="dm-username">{msg.user?.username}</span>
+                </div>
+                <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
               </div>
-              <span className="dm-content">{renderEmotes(msg.content, msg.emots)}</span>
-            </div>
-          );
-        })}
+            );
+          })}
+        </div>
+        {!isAutoScroll && unreadCount > 0 && (
+          <button className="pip-new-msg-btn" onClick={scrollToBottom}>
+            ↓ {unreadCount} 条新消息
+          </button>
+        )}
       </div>
       {selectedUser && (
         <UserActionPopup
@@ -187,6 +220,7 @@ export default function DanmakuPage() {
   const [bannedUids, setBannedUids] = useState(new Set());
 
   const [pipOpen, setPipOpen] = useState(false);
+  const [pipOpacity, setPipOpacity] = useState(() => Number(localStorage.getItem('pip-opacity')) || 1);
   const pipRootRef = useRef(null);
   const pipWindowRef = useRef(null);
 
@@ -444,6 +478,7 @@ export default function DanmakuPage() {
 
   const handleScMode = (v) => { setScDisplayMode(v); localStorage.setItem('dm-sc-mode', v); };
   const handleGiftMode = (v) => { setGiftDisplayMode(v); localStorage.setItem('dm-gift-mode', v); };
+  const handlePipOpacity = (v) => { setPipOpacity(v); localStorage.setItem('pip-opacity', v); };
 
   const openPip = async () => {
     if (!('documentPictureInPicture' in window)) {
@@ -478,6 +513,7 @@ export default function DanmakuPage() {
           danmakuList={danmakuList}
           roomId={roomId}
           fontSize={fontSize}
+          opacity={pipOpacity}
           onBanSuccess={handleBanSuccess}
           onFilterUser={uid => { setFilterUid(uid); }}
           onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
@@ -507,12 +543,13 @@ export default function DanmakuPage() {
         danmakuList={danmakuList}
         roomId={roomId}
         fontSize={fontSize}
+        opacity={pipOpacity}
         onBanSuccess={handleBanSuccess}
         onFilterUser={uid => { setFilterUid(uid); }}
         onViewHistory={uid => { navigate('/history', { state: { uid } }); }}
       />
     );
-  }, [danmakuList, roomId, fontSize, handleBanSuccess, navigate]);
+  }, [danmakuList, roomId, fontSize, pipOpacity, handleBanSuccess, navigate]);
 
   const filterDanmaku = (list) => {
     return list.filter(msg => {
@@ -870,6 +907,19 @@ export default function DanmakuPage() {
                 <span className="dm-settings-radio-hint">含礼物图标</span>
               </label>
             </div>
+          </div>
+
+          <div className="dm-settings-group">
+            <div className="dm-settings-label">
+              悬浮窗透明度
+              <span className="dm-settings-value">{Math.round(pipOpacity * 100)}%</span>
+            </div>
+            <input
+              type="range" min="0.2" max="1" step="0.05"
+              value={pipOpacity}
+              onChange={e => handlePipOpacity(Number(e.target.value))}
+              className="dm-settings-slider"
+            />
           </div>
         </div>
       </div>
