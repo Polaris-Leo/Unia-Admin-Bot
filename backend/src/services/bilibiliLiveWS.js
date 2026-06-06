@@ -167,12 +167,13 @@ export class BilibiliLiveWS {
     this.rateLimitTime = null;   // 限速触发时间
     this.rateLimitCD = 5 * 60 * 1000;  // CD时间：5分钟
     this._intentionalDisconnect = false; // 是否为主动断开（防止误触重连）
-    
+
     this.currentSessionId = null; // 当前直播场次ID (开播时间戳)
     this.lastSessionId = null;    // 上一次直播场次ID
     this.lastSessionEndTime = 0;  // 上一次直播结束(或最后活跃)时间
     this.sessionTimeout = 15 * 60 * 1000; // 会话延续阈值：15分钟
     this.isLive = false;          // 当前是否在直播
+    this._lastDividerSessionId = null; // 已插入直播开始分界线的最近场次ID（防重复）
 
     // 事件回调
     this.onDanmaku = null;      // 弹幕消息
@@ -1047,9 +1048,12 @@ export class BilibiliLiveWS {
         const preSessionId = this.currentSessionId;
         setTimeout(async () => {
           const status = await this.getLiveStatus();
-          // 只有当 LIVE 事件导致 session 切换时才插入"直播开始"分界线
-          // 不在后端启动/重连时触发，仅响应真实的开播事件
-          if (this.currentSessionId && String(this.currentSessionId) !== String(preSessionId)) {
+          // 只有当 LIVE 事件导致 session 切换，且尚未为该 session 插入过分界线时才插入
+          // B站偶尔会连续发送两次 LIVE 命令，_lastDividerSessionId 防止重复广播
+          if (this.currentSessionId
+              && String(this.currentSessionId) !== String(preSessionId)
+              && String(this.currentSessionId) !== String(this._lastDividerSessionId)) {
+            this._lastDividerSessionId = this.currentSessionId; // 立即标记，阻断并发的第二次回调
             const liveStartTs = Number(this.currentSessionId);
             const timeStr = new Date(liveStartTs * 1000 + 8 * 3600 * 1000).toISOString().slice(11, 16);
             const divider = {
