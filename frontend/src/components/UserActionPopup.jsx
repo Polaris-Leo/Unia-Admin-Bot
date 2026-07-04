@@ -53,7 +53,7 @@ export default function UserActionPopup({
     if (banning) return;
     setBanning(true);
     try {
-      await silentUser({
+      const res = await silentUser({
         roomId,
         uid: user.uid,
         username: user.username,
@@ -63,7 +63,7 @@ export default function UserActionPopup({
       const label = hours === -1 ? '永久' : hours === 0 ? '本场' : `${hours}小时`;
       showToast(`已禁言 ${user.username} (${label})`);
       onBanSuccess?.(user.uid);
-      setBanStatus({ tuid: user.uid });
+      setBanStatus({ tuid: user.uid, id: res.data?.banId });
     } catch (e) {
       showToast(e.response?.data?.error || '禁言失败');
     } finally {

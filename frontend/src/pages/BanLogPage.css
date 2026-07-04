@@ -85,6 +85,12 @@
   padding: 2px 8px; border-radius: 20px;
 }
 
+.banlog-auto-note {
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--danger);
+}
+
 .banlog-unban-btn {
   padding: 3px 10px;
   border-radius: var(--radius-sm);

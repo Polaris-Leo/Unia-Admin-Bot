@@ -4,6 +4,7 @@ import { BilibiliLiveWS } from '../services/bilibiliLiveWS.js';
 import { loadCookies } from '../utils/cookieStorage.js';
 import { getLastSessionId, loadRecentHistory, loadSessionChunk } from '../utils/historyStorage.js';
 import { requireAuth } from '../middleware/auth.js';
+import { scheduleLiveEndBanCheck } from '../services/banAutoCheck.js';
 import jwt from 'jsonwebtoken';
 
 const router = Router();
@@ -33,6 +34,16 @@ function attachHandlers(liveWS) {
   liveWS.onLiveStatus = (msg) => {
     cachedLiveStatus = { type: 'live_status', ...msg };
     broadcast(cachedLiveStatus);
+    if (msg?.liveStatus === 1) {
+      liveWS._banAutoCheckSawLive = true;
+    } else if (msg?.liveStatus === 0 && liveWS._banAutoCheckSawLive) {
+      liveWS._banAutoCheckSawLive = false;
+      scheduleLiveEndBanCheck({
+        roomId: liveWS.roomId || currentRoomId,
+        sessionId: liveWS.currentSessionId,
+        endedAt: Date.now()
+      });
+    }
   };
   liveWS.onRoomInfo = (msg) => {
     cachedRoomInfo = { type: 'room_info', ...msg };

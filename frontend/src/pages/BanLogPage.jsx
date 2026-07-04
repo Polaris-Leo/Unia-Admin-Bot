@@ -4,6 +4,14 @@ import { formatTs } from '../utils/timeUtils';
 import './BanLogPage.css';
 
 const BAN_HOUR_LABEL = (h) => h === -1 ? '永久' : h === 0 ? '本场' : `${h}小时`;
+const AUTO_UNBAN_LABEL = {
+  auto_unsilenced: '系统已自动解禁',
+  already_released: 'B站已解除',
+  failed: '自动检查失败',
+  skipped_newer_permanent: '跳过：后续永久禁言',
+  missing_ban_id: '缺少禁言ID',
+  manual_unsilenced: '人工解除禁言'
+};
 
 export default function BanLogPage() {
   const [rows, setRows] = useState([]);
@@ -106,10 +114,21 @@ export default function BanLogPage() {
                   </span>
                 </td>
                 <td>
-                  {row.unsilenced_at
-                    ? <span className="banlog-unsilenced-tag">已解禁</span>
-                    : <button className="banlog-unban-btn" onClick={() => handleUnban(row)}>解禁</button>
-                  }
+                  {row.unsilenced_at ? (
+                    <span
+                      className="banlog-unsilenced-tag"
+                      title={row.auto_unban_note || ''}
+                    >
+                      {AUTO_UNBAN_LABEL[row.auto_unban_status] || '已解禁'}
+                    </span>
+                  ) : (
+                    <>
+                      {row.auto_unban_status === 'failed' && (
+                        <div className="banlog-auto-note" title={row.auto_unban_note || ''}>自动检查失败</div>
+                      )}
+                      <button className="banlog-unban-btn" onClick={() => handleUnban(row)}>解禁</button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}

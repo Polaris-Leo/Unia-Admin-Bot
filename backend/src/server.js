@@ -14,7 +14,8 @@ import historyRouter from './routes/history.js';
 import tagsRouter from './routes/tags.js';
 import modsRouter from './routes/mods.js';
 import bilibiliRouter from './routes/bilibili.js';
-import { loadCookies, loadLocalCookies } from './utils/cookieStorage.js';
+import { loadLocalCookies } from './utils/cookieStorage.js';
+import { startBanAutoCheckScheduler } from './services/banAutoCheck.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3001;
@@ -102,6 +103,7 @@ app.use((err, req, res, next) => {
 });
 
 createDanmakuWSS(server);
+startBanAutoCheckScheduler();
 
 server.listen(PORT, () => {
   console.log(`✅ Unia-Admin-Bot backend running on port ${PORT}`);

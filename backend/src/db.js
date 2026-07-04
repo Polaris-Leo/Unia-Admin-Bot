@@ -44,6 +44,10 @@ export function initDb() {
       trigger_content  TEXT,
       ban_hours        INTEGER NOT NULL,
       bilibili_ban_id  INTEGER,
+      expected_unban_at INTEGER,
+      auto_unban_checked_at INTEGER,
+      auto_unban_status TEXT,
+      auto_unban_note TEXT,
       unsilenced_at    INTEGER,
       created_at       INTEGER NOT NULL
     );
@@ -64,13 +68,34 @@ export function initDb() {
   `);
 
   // 迁移：添加 is_superadmin 列（幂等）
-  const cols = db.prepare(`PRAGMA table_info(mods)`).all().map(c => c.name);
-  if (!cols.includes('is_superadmin')) {
+  const modCols = db.prepare(`PRAGMA table_info(mods)`).all().map(c => c.name);
+  if (!modCols.includes('is_superadmin')) {
     db.exec(`ALTER TABLE mods ADD COLUMN is_superadmin INTEGER NOT NULL DEFAULT 0`);
     // 将 id=1 的账户标记为超级管理员
     db.prepare(`UPDATE mods SET is_superadmin = 1 WHERE id = 1`).run();
     console.log('✅ mods 表已迁移：is_superadmin 列');
   }
+
+  // 迁移：补充禁言自动检查字段（幂等）
+  const banLogCols = db.prepare(`PRAGMA table_info(ban_logs)`).all().map(c => c.name);
+  const banLogMigrations = [
+    ['expected_unban_at', 'INTEGER'],
+    ['auto_unban_checked_at', 'INTEGER'],
+    ['auto_unban_status', 'TEXT'],
+    ['auto_unban_note', 'TEXT']
+  ];
+  for (const [name, type] of banLogMigrations) {
+    if (!banLogCols.includes(name)) {
+      db.exec(`ALTER TABLE ban_logs ADD COLUMN ${name} ${type}`);
+      console.log(`✅ ban_logs 表已迁移：${name} 列`);
+    }
+  }
+  db.prepare(`
+    UPDATE ban_logs
+    SET expected_unban_at = created_at + ban_hours * 3600000
+    WHERE ban_hours > 0 AND expected_unban_at IS NULL
+  `).run();
+  db.exec(`CREATE INDEX IF NOT EXISTS idx_ban_logs_expected_unban ON ban_logs(expected_unban_at)`);
 
   ensureAdminAccount();
 }

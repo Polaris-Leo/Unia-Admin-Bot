@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
 import { addSilentUser, delSilentUser, getSilentUserList } from '../services/biliAdmin.js';
+import { findSilentRecordWithRetry } from '../services/banAutoCheck.js';
 
 const router = Router();
 
@@ -12,15 +13,24 @@ router.post('/silent', requireAuth, async (req, res, next) => {
       return res.status(400).json({ error: '参数不完整' });
     }
 
-    const result = await addSilentUser({ roomId, tuid: uid, hours, msg: content || '' });
+    const banHours = Number(hours);
+    await addSilentUser({ roomId, tuid: uid, hours: banHours, msg: content || '' });
+    const silentRecord = await findSilentRecordWithRetry(roomId, uid);
+    const expectedUnbanAt = banHours > 0 ? Date.now() + banHours * 60 * 60 * 1000 : null;
 
     const now = Date.now();
-    db.prepare(`
-      INSERT INTO ban_logs (room_id, mod_id, target_uid, target_name, trigger_content, ban_hours, bilibili_ban_id, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    `).run(String(roomId), req.mod.id, Number(uid), username || '', content || '', Number(hours), null, now);
+    const info = db.prepare(`
+      INSERT INTO ban_logs (
+        room_id, mod_id, target_uid, target_name, trigger_content, ban_hours,
+        bilibili_ban_id, expected_unban_at, created_at
+      )
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    `).run(
+      String(roomId), req.mod.id, Number(uid), username || '', content || '', banHours,
+      silentRecord?.id || null, expectedUnbanAt, now
+    );
 
-    res.json({ ok: true });
+    res.json({ ok: true, logId: info.lastInsertRowid, banId: silentRecord?.id || null });
   } catch (e) { next(e); }
 });
 
@@ -31,8 +41,25 @@ router.post('/unsilent', requireAuth, async (req, res, next) => {
 
     await delSilentUser({ roomId, banId });
 
+    const now = Date.now();
     if (logId) {
-      db.prepare('UPDATE ban_logs SET unsilenced_at = ? WHERE id = ?').run(Date.now(), logId);
+      db.prepare(`
+        UPDATE ban_logs
+        SET unsilenced_at = ?,
+            auto_unban_status = 'manual_unsilenced',
+            auto_unban_note = '人工解除禁言'
+        WHERE id = ?
+      `).run(now, logId);
+    } else {
+      db.prepare(`
+        UPDATE ban_logs
+        SET unsilenced_at = ?,
+            auto_unban_status = 'manual_unsilenced',
+            auto_unban_note = '人工解除禁言'
+        WHERE room_id = ?
+          AND bilibili_ban_id = ?
+          AND unsilenced_at IS NULL
+      `).run(now, String(roomId), Number(banId));
     }
 
     res.json({ ok: true });
