@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db.js';
 import { requireAuth } from '../middleware/auth.js';
-import { addSilentUser, delSilentUser, getSilentUserList } from '../services/biliAdmin.js';
+import { banUser, delSilentUser, getSilentUserList, unbanUser } from '../services/biliAdmin.js';
 import { findSilentRecordWithRetry } from '../services/banAutoCheck.js';
 
 const router = Router();
@@ -14,7 +14,7 @@ router.post('/silent', requireAuth, async (req, res, next) => {
     }
 
     const banHours = Number(hours);
-    await addSilentUser({ roomId, tuid: uid, hours: banHours, msg: content || '' });
+    await banUser({ roomId, userId: uid, hour: banHours, msg: content || '' });
     const silentRecord = await findSilentRecordWithRetry(roomId, uid);
     const expectedUnbanAt = banHours > 0 ? Date.now() + banHours * 60 * 60 * 1000 : null;
 
@@ -36,10 +36,14 @@ router.post('/silent', requireAuth, async (req, res, next) => {
 
 router.post('/unsilent', requireAuth, async (req, res, next) => {
   try {
-    const { roomId, banId, logId } = req.body;
-    if (!roomId || !banId) return res.status(400).json({ error: '参数不完整' });
+    const { roomId, banId, uid, logId } = req.body;
+    if (!roomId || (!banId && !uid)) return res.status(400).json({ error: '参数不完整' });
 
-    await delSilentUser({ roomId, banId });
+    if (uid) {
+      await unbanUser({ roomId, userId: uid });
+    } else {
+      await delSilentUser({ roomId, banId });
+    }
 
     const now = Date.now();
     if (logId) {
@@ -50,6 +54,16 @@ router.post('/unsilent', requireAuth, async (req, res, next) => {
             auto_unban_note = '人工解除禁言'
         WHERE id = ?
       `).run(now, logId);
+    } else if (uid) {
+      db.prepare(`
+        UPDATE ban_logs
+        SET unsilenced_at = ?,
+            auto_unban_status = 'manual_unsilenced',
+            auto_unban_note = '人工解除禁言'
+        WHERE room_id = ?
+          AND target_uid = ?
+          AND unsilenced_at IS NULL
+      `).run(now, String(roomId), Number(uid));
     } else {
       db.prepare(`
         UPDATE ban_logs

@@ -1,5 +1,5 @@
 import { db } from '../db.js';
-import { delSilentUser, getSilentUserList } from './biliAdmin.js';
+import { getSilentUserList, unbanUser } from './biliAdmin.js';
 
 const CHECK_INTERVAL_MS = Number(process.env.BAN_AUTO_CHECK_INTERVAL_MS || 60 * 1000);
 const LIVE_END_CHECK_DELAY_MS = Number(process.env.BAN_LIVE_END_CHECK_DELAY_MS || 30 * 1000);
@@ -58,8 +58,10 @@ function buildActiveMap(activeUsers) {
 }
 
 function findMatchingActive(log, activeMap) {
-  if (!log.bilibili_ban_id) return null;
-  return activeMap.byId.get(String(log.bilibili_ban_id)) || null;
+  if (log.bilibili_ban_id) {
+    return activeMap.byId.get(String(log.bilibili_ban_id)) || null;
+  }
+  return activeMap.byUid.get(String(log.target_uid))?.[0] || null;
 }
 
 function removeActive(activeMap, active) {
@@ -99,11 +101,6 @@ function hasOpenPermanentBan(log) {
 async function resolveLogIfNeeded(log, activeMap, reason) {
   const now = Date.now();
 
-  if (!log.bilibili_ban_id) {
-    markAutoState(log.id, 'missing_ban_id', `${reason}检查时缺少 B站禁言记录 ID，已跳过自动解禁`, now, null);
-    return { status: 'missing_ban_id', logId: log.id };
-  }
-
   const active = findMatchingActive(log, activeMap);
   if (!active) {
     markAutoState(log.id, 'already_released', `${reason}检查时 B站禁言列表中已不存在`, now, now);
@@ -122,7 +119,7 @@ async function resolveLogIfNeeded(log, activeMap, reason) {
   }
 
   try {
-    await delSilentUser({ roomId: log.room_id, banId: active.id });
+    await unbanUser({ roomId: log.room_id, userId: active.tuid || log.target_uid });
     removeActive(activeMap, active);
     markAutoState(log.id, 'auto_unsilenced', `${reason}检查时仍在 B站禁言列表，系统已自动解除`, now, now);
     return { status: 'auto_unsilenced', logId: log.id, banId: active.id };

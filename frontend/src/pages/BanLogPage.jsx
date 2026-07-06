@@ -38,9 +38,13 @@ export default function BanLogPage() {
   const handleSearch = () => { setPage(1); fetchLogs(1); };
 
   const handleUnban = async (row) => {
-    if (!row.bilibili_ban_id) { alert('无可用禁言记录 ID'); return; }
     try {
-      await unsilentUser({ roomId: row.room_id, banId: row.bilibili_ban_id, logId: row.id });
+      await unsilentUser({
+        roomId: row.room_id,
+        uid: row.target_uid,
+        banId: row.bilibili_ban_id,
+        logId: row.id
+      });
       setRows(prev => prev.map(r => r.id === row.id ? { ...r, unsilenced_at: Date.now() } : r));
     } catch (e) {
       alert(e.response?.data?.error || '解禁失败');

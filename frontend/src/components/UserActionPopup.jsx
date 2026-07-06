@@ -72,9 +72,8 @@ export default function UserActionPopup({
   };
 
   const handleUnban = async () => {
-    if (!banStatus?.id) { showToast('无可用禁言记录 ID'); return; }
     try {
-      await unsilentUser({ roomId, banId: banStatus.id });
+      await unsilentUser({ roomId, banId: banStatus?.id, uid: user.uid });
       showToast('已解除禁言');
       setBanStatus(null);
     } catch (e) {
